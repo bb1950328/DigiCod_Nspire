@@ -44,7 +44,8 @@ jobs:
         git clone --depth 1 -b ${{ matrix.micropython-version }} https://github.com/micropython/micropython.git
         cd micropython
         git submodule update --init
-        sed -i '1i#pragma GCC diagnostic ignored "-Wdangling-pointer=1"' py/stackctrl.c
+        sed -i '1i#pragma GCC diagnostic ignored "-Wdangling-pointer=1"\n' py/stackctrl.c
+        sed -i '1i#pragma GCC diagnostic ignored "-Wenum-int-mismatch"\n' py/compile.h
         cd ports/unix
         make
         echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV

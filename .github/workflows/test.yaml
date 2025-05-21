@@ -40,7 +40,6 @@ jobs:
     - name: Build MicroPython Unix port (older)
       if: matrix.micropython-version != 'latest'
       run: |
-        sudo apt install gcc-10 g++-10
         git clone --depth 1 -b ${{ matrix.micropython-version }} https://github.com/micropython/micropython.git
         cd micropython
         git submodule update --init

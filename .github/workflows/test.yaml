@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - '**.py'
+      - '.github/workflows/**'
   pull_request:
     paths:
       - '**.py'
@@ -43,8 +44,9 @@ jobs:
         git clone --depth 1 -b ${{ matrix.micropython-version }} https://github.com/micropython/micropython.git
         cd micropython
         git submodule update --init
+        sed -i '1i#pragma GCC diagnostic ignored "-Wdangling-pointer=1"' py/stackctrl.c
         cd ports/unix
-        CFLAGS="-Wno-error" make
+        make
         echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython

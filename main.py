@@ -1,14 +1,9 @@
-import math  # Add this at the top of the file
+import math
 
 class Tool(object):
     # abstract
     def run(self) -> None:
         raise NotImplementedError(f"{self.__class__.__name__} must implement run()")
-
-class BaseConversionTool(Tool):
-
-    def run(self) -> None:
-        print("Tool Basisumwandlung....")
 
 class EntropyTool(Tool):
     def run(self) -> None:
@@ -20,12 +15,21 @@ class EntropyTool(Tool):
                 p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
                 probs.append(p)
 
-            result = -sum(p1 * math.log2(p1) for p1 in probs if p1 > 0)
+            result = -sum(p * math.log2(p) for p in probs if p > 0)
             print(f"\nEntropie: {result:.6f} bits/Symbol")
         except Exception as e:
             print(f"Fehler: {str(e)}")
             
-        # Pause functionality from icth_tool.py
+        print("\nDrücke Enter, um fortzufahren...")
+        input()
+
+class PlaceholderTool(Tool):
+    def __init__(self, name):
+        self.name = name
+
+    def run(self) -> None:
+        print(f"==== {self.name} ====")
+        print(f"Functionality for {self.name} not yet implemented")
         print("\nDrücke Enter, um fortzufahren...")
         input()
 
@@ -45,9 +49,44 @@ class ToolEntry(ToolNode):
         self.cls = cls
 
 TOOLS = [
-    ToolGroup(1, "Informationstheorie", [
+    ToolGroup(1, "Entropie und Kompression", [
         ToolEntry(1, "Entropie berechnen", EntropyTool),
-        ToolEntry(2, "Basisumwandlung", BaseConversionTool),
+        ToolEntry(2, "Redundanz berechnen", lambda: PlaceholderTool("Redundanz berechnen")),
+        ToolEntry(3, "Huffman-Code erstellen", lambda: PlaceholderTool("Huffman-Code erstellen")),
+        ToolEntry(4, "Lauflängenkodierung (RLE)", lambda: PlaceholderTool("Lauflängenkodierung (RLE)")),
+        ToolEntry(5, "Lempel-Ziv LZ78", lambda: PlaceholderTool("Lempel-Ziv LZ78")),
+        ToolEntry(6, "Lempel-Ziv LZ77", lambda: PlaceholderTool("Lempel-Ziv LZ77")),
+    ]),
+    
+    ToolGroup(2, "RSA", [
+        ToolEntry(1, "Schlüsselpaar erzeugen", lambda: PlaceholderTool("Schlüsselpaar erzeugen")),
+        ToolEntry(2, "Verschlüsseln", lambda: PlaceholderTool("Verschlüsseln")),
+        ToolEntry(3, "Entschlüsseln", lambda: PlaceholderTool("Entschlüsseln")),
+    ]),
+    
+    ToolGroup(3, "Kanalcodierung", [
+        ToolEntry(1, "Hamming-Distanz", lambda: PlaceholderTool("Hamming-Distanz")),
+        ToolEntry(2, "Syndrom berechnen", lambda: PlaceholderTool("Syndrom berechnen")),
+        ToolEntry(3, "CRC prüfen", lambda: PlaceholderTool("CRC prüfen")),
+        ToolEntry(4, "CRC berechnen", lambda: PlaceholderTool("CRC berechnen")),
+    ]),
+    
+    ToolGroup(4, "Faltungscode", [
+        ToolEntry(1, "Faltungskodierung", lambda: PlaceholderTool("Faltungskodierung")),
+        ToolEntry(2, "Viterbi-Dekodierung", lambda: PlaceholderTool("Viterbi-Dekodierung")),
+    ]),
+    
+    ToolGroup(5, "Kanalmodell", [
+        ToolEntry(1, "Transinformation", lambda: PlaceholderTool("Transinformation")),
+        ToolEntry(2, "Maximum-Likelihood", lambda: PlaceholderTool("Maximum-Likelihood")),
+    ]),
+    
+    ToolGroup(6, "Binärumrechnung", [
+        ToolEntry(1, "Binär ↔ Dezimal", lambda: PlaceholderTool("Binär ↔ Dezimal")),
+        ToolEntry(2, "Hexadezimal → Binär", lambda: PlaceholderTool("Hexadezimal → Binär")),
+        ToolEntry(3, "2er-Komplement ↔ Dezimal", lambda: PlaceholderTool("2er-Komplement ↔ Dezimal")),
+        ToolEntry(4, "Float → Binär", lambda: PlaceholderTool("Float → Binär")),
+        ToolEntry(5, "IEEE-754 analysieren", lambda: PlaceholderTool("IEEE-754 analysieren")),
     ]),
 ]
 
@@ -71,7 +110,7 @@ def select_tool(tools: list[ToolNode]) -> None:
         current_tools = tools if not path else node.tools if isinstance(node, ToolGroup) else []
 
         print()
-        print("# Hauptmenu" if not path else f"# {'.'.join(map(str, path))} {node.name if node else ''}")
+        print("# Hauptmenü" if not path else f"# {'.'.join(map(str, path))} {node.name if node else ''}")
         for t in current_tools:
             print(f"{t.nr} {t.name}")
 

@@ -4,6 +4,7 @@ import tool_base
 import tools_channel_coding
 import tools_convolutional_code
 import channel_model
+import tools_binary_conversion
 
 
 TOOLS = [
@@ -40,10 +41,70 @@ TOOLS = [
     ]),
     
     tool_base.ToolGroup(6, "Binärumrechnung", [
-        tool_base.ToolEntry(1, "Binär ↔ Dezimal", lambda: tool_base.PlaceholderTool("Binär ↔ Dezimal")),
-        tool_base.ToolEntry(2, "Hexadezimal → Binär", lambda: tool_base.PlaceholderTool("Hexadezimal → Binär")),
-        tool_base.ToolEntry(3, "2er-Komplement ↔ Dezimal", lambda: tool_base.PlaceholderTool("2er-Komplement ↔ Dezimal")),
-        tool_base.ToolEntry(4, "Float → Binär", lambda: tool_base.PlaceholderTool("Float → Binär")),
-        tool_base.ToolEntry(5, "IEEE-754 analysieren", lambda: tool_base.PlaceholderTool("IEEE-754 analysieren")),
+        tool_base.ToolEntry(1, "Binär → Dezimal", tools_binary_conversion.BinToDec),
+        tool_base.ToolEntry(2, "Dezimal → Binär", tools_binary_conversion.DecToBin),
+        tool_base.ToolEntry(3, "Hexadezimal → Binär", tools_binary_conversion.HexToBin),
+        tool_base.ToolEntry(4, "2er-Komplement → Dezimal", tools_binary_conversion.TwosComplementToDecimal),
+        tool_base.ToolEntry(5, "Dezimal → 2er-Komplement", tools_binary_conversion.DecimalToTwosComplement),
+        tool_base.ToolEntry(6, "Float → Binär", tools_binary_conversion.FloatToBin),
+        tool_base.ToolEntry(7, "IEEE-754 analysieren", tools_binary_conversion.AnalyzeIEEE754),
     ]),
 ]
+
+def find_tool_by_path(path: list, tools: list):
+    current_tools = tools
+    current = None
+    for p in path:
+        try:
+            current = next((t for t in current_tools if t.nr == p))
+        except StopIteration:
+            current = None
+        if current is None:
+            return None
+        if isinstance(current, tool_base.ToolGroup):
+            current_tools = current.tools
+    return current
+
+
+def select_tool(tools) -> None:
+    path = []
+
+    while True:
+        node = find_tool_by_path(path, tools) if path else None
+        current_tools = tools if not path else node.tools if isinstance(node, tool_base.ToolGroup) else []
+
+        print()
+        print("# Hauptmenü" if not path else "# {} {}".format(".".join(map(str, path)), node.name if node else ''))
+        for t in current_tools:
+            print("{} {}".format(t.nr, t.name))
+
+        input_str = input("Nr: ").strip()
+
+        if input_str == "":
+            if path:
+                path.pop()  # Go up one level
+                continue
+            else:
+                return  # Exit menu
+
+        try:
+            parts = list(map(int, input_str.split(".")))
+            full_path = parts if "." in input_str else path + parts
+
+            result = find_tool_by_path(full_path, tools)
+            if isinstance(result, tool_base.ToolEntry):
+                print()
+                instance = result.cls()
+                instance.run()
+            elif isinstance(result, tool_base.ToolGroup):
+                path = full_path
+            else:
+                print("Ungültige Eingabe.")
+        except ValueError:
+            print("Bitte eine gültige Nummer oder Pfad eingeben (z.B. 1 oder 1.2).")
+
+
+def main():
+    select_tool(TOOLS)
+
+main()

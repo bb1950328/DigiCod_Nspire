@@ -1,29 +1,30 @@
 import tools_entropy_compression
 import tools_rsa
 import tool_base
+import tools_channel_coding
 
 
 TOOLS = [
     tool_base.ToolGroup(1, "Entropie und Kompression", [
         tool_base.ToolEntry(1, "Entropie berechnen", tools_entropy_compression.EntropyTool),
         tool_base.ToolEntry(2, "Redundanz berechnen", tools_entropy_compression.RedundanzTool),
-        tool_base.ToolEntry(3, "Huffman-Code erstellen", entropy_compression_tools.HuffmanTool),
+        tool_base.ToolEntry(3, "Huffman-Code erstellen", tools_entropy_compression.HuffmanTool),
         tool_base.ToolEntry(4, "Lauflängenkodierung (RLE)", tools_entropy_compression.RLETool),
         tool_base.ToolEntry(5, "Lempel-Ziv LZ78", tools_entropy_compression.LZ78Tool),
         tool_base.ToolEntry(6, "Lempel-Ziv LZ77", tools_entropy_compression.LZ77Tool),
     ]),
     
     tool_base.ToolGroup(2, "RSA", [
-        tool_base.ToolEntry(1, "Schlüsselpaar erzeugen", rsa_tools.KeyGenerationTool),
-        tool_base.ToolEntry(2, "Verschlüsseln", rsa_tools.EncryptionTool),
-        tool_base.ToolEntry(3, "Entschlüsseln", rsa_tools.DecryptionTool),
+        tool_base.ToolEntry(1, "Schlüsselpaar erzeugen", tools_rsa.KeyGenerationTool),
+        tool_base.ToolEntry(2, "Verschlüsseln", tools_rsa.EncryptionTool),
+        tool_base.ToolEntry(3, "Entschlüsseln", tools_rsa.DecryptionTool),
     ]),
     
     tool_base.ToolGroup(3, "Kanalcodierung", [
-        tool_base.ToolEntry(1, "Hamming-Distanz", lambda: tool_base.PlaceholderTool("Hamming-Distanz")),
-        tool_base.ToolEntry(2, "Syndrom berechnen", lambda: tool_base.PlaceholderTool("Syndrom berechnen")),
-        tool_base.ToolEntry(3, "CRC prüfen", lambda: tool_base.PlaceholderTool("CRC prüfen")),
-        tool_base.ToolEntry(4, "CRC berechnen", lambda: tool_base.PlaceholderTool("CRC berechnen")),
+        tool_base.ToolEntry(1, "Hamming-Distanz", tools_channel_coding.HammingDistanceTool),
+        tool_base.ToolEntry(2, "Syndrom berechnen", tools_channel_coding.SyndromeTool),
+        tool_base.ToolEntry(3, "CRC prüfen", tools_channel_coding.CRCCheckTool),
+        tool_base.ToolEntry(4, "CRC berechnen", tools_channel_coding.CRCCalculationTool),
     ]),
     
     tool_base.ToolGroup(4, "Faltungscode", [

@@ -362,6 +362,80 @@ def crc_compute(data, generator, n_check_bits):
 #####################
 # Faltungscodes #
 #####################
+def calculate_error_syndrome(position, generator, codeword_length):
+    """
+    Berechnet das Syndrom für eine spezifische Fehlerstelle bei zyklischen Codes
+
+    Args:
+        position (int): Position des Fehlers (Exponent von x^position)
+        generator (str): Generator-Polynom in Binärdarstellung
+        codeword_length (int): Länge des Codeworts
+
+    Returns:
+        tuple: (polynomial_form, binary_form) des Syndroms
+    """
+    # Erzeuge ein Fehler-Polynom x^position
+    error_polynomial = ['0'] * codeword_length
+    error_polynomial[position] = '1'
+    error_polynomial_str = ''.join(error_polynomial)
+
+    # Berechne das Syndrom durch Polynomdivision
+    syndrome = mod2div(error_polynomial_str, generator)
+
+    # Auffüllen mit führenden Nullen falls nötig
+    syndrome_bits = len(generator) - 1
+    syndrome = syndrome.zfill(syndrome_bits)
+
+    # Binäre Form des Syndroms
+    binary_form = [int(bit) for bit in syndrome]
+
+    # Polynomiale Form des Syndroms erstellen
+    polynomial_form = ""
+    for i in range(syndrome_bits):
+        if syndrome[i] == '1':
+            if syndrome_bits - i - 1 == 0:
+                term = "1"
+            elif syndrome_bits - i - 1 == 1:
+                term = "x"
+            else:
+                term = f"x^{syndrome_bits - i - 1}"
+
+            if polynomial_form:
+                polynomial_form += " + " + term
+            else:
+                polynomial_form = term
+
+    if not polynomial_form:
+        polynomial_form = "0"
+
+    return polynomial_form, binary_form
+
+
+def create_syndrome_table_for_cyclic_code(generator, codeword_length=None):
+    """
+    Erstellt eine Tabelle mit Syndromen für jede Fehlerstelle in einem zyklischen Code
+
+    Args:
+        generator (str): Generator-Polynom in Binärdarstellung
+        codeword_length (int, optional): Länge des Codeworts
+
+    Returns:
+        dict: Tabelle mit Fehlerstellen und zugehörigen Syndromen
+    """
+    # Berechne die Codewortlänge wenn nicht angegeben
+    if codeword_length is None:
+        codeword_length = 2 ** (len(generator) - 1) - 1
+
+    # Tabelle für Fehlerstellen und Syndrome
+    syndrome_table = {}
+
+    # Für jede mögliche Fehlerposition
+    for position in range(codeword_length):
+        error_term = f"x^{position}" if position > 1 else ("x" if position == 1 else "1")
+        poly_syndrome, bin_syndrome = calculate_error_syndrome(position, generator, codeword_length)
+        syndrome_table[error_term] = (poly_syndrome, bin_syndrome)
+
+    return syndrome_table
 
 def get_convolution_output(input_bits, generator_polynomials):
     """Berechnet die Ausgabe eines Faltungscodierers für eine gegebene Eingabe"""
@@ -872,7 +946,7 @@ def kanal_menu():
             clear_screen()
             print("==== CRC berechnen ====")
             try:
-                data = input("Daten (Bitfolge): ")
+                data = input("Daten (Term standart: 11): ")
                 generator = input("Generator-Polynom (Bitfolge): ")
                 n_check_bits = len(generator) - 1
 
@@ -1218,6 +1292,1049 @@ def binär_menu():
             current_menu = "main"
 
 
+def polynomial_division_for_syndrome(message, generator):
+    """
+    Berechnet das Syndrom für eine Fehlerstelle mittels Polynomdivision
+
+    Args:
+        message (str): Empfangenes Codewort oder Nachricht
+        generator (str): Generator-Polynom (Bitfolge)
+
+    Returns:
+        str: Syndrom (Rest der Polynomdivision)
+    """
+    # Polynomdivision durchführen
+    remainder = mod2div(message, generator)
+    return remainder
+
+
+def fast_multiple_addition(generator, codeword, show_steps=False):
+    """
+    Führt schnelle Mehrfachaddition durch, um Codewort zu prüfen
+
+    Args:
+        generator (str): Generator-Polynom (Bitfolge)
+        codeword (str): Zu prüfendes Codewort
+        show_steps (bool): Berechnungsschritte anzeigen
+
+    Returns:
+        tuple: (is_valid, result) oder (is_valid, steps, result) wenn show_steps=True
+    """
+    # Kopie des Codeworts für Berechnung
+    result = list(codeword)
+    steps = [codeword] if show_steps else None
+
+    # Finde Positionen mit '1' im Codewort
+    ones_positions = [i for i, bit in enumerate(codeword) if bit == '1']
+
+    # Entferne führende Nullen im Generator
+    gen = generator
+    while gen.startswith('0') and len(gen) > 1:
+        gen = gen[1:]
+
+    # Für jede Position mit einer '1', addiere den Generator (XOR)
+    for pos in ones_positions:
+        # Überspringe Positionen, die über die Codewortlänge hinausgehen würden
+        if pos > len(codeword) - len(gen):
+            continue
+
+        # Generator an dieser Position anwenden
+        for j in range(len(gen)):
+            if pos + j < len(result) and gen[j] == '1':
+                # XOR-Operation: 1^1=0, 0^0=0, 1^0=1, 0^1=1
+                result[pos + j] = '1' if result[pos + j] != '1' else '0'
+
+        # Diesen Schritt aufzeichnen, falls gewünscht
+        if show_steps:
+            steps.append(''.join(result))
+
+    # Codewort ist gültig, wenn das Ergebnis nur aus Nullen besteht
+    is_valid = all(bit == '0' for bit in result)
+
+    # Passende Ergebnisse zurückgeben
+    if show_steps:
+        return is_valid, steps, ''.join(result)
+    else:
+        return is_valid, ''.join(result)
+
+
+def generate_cyclic_codewords(generator, message_length):
+    """
+    Generiert gültige Codeworte für einen zyklischen Code
+
+    Args:
+        generator (str): Generator-Polynom (Bitfolge)
+        message_length (int): Länge des Nachrichtenanteils
+
+    Returns:
+        list: Liste der gültigen Codeworte
+    """
+    # Anzahl der Kontrollbits = Grad des Generator-Polynoms
+    check_bits = len(generator) - 1
+
+    # Gesamtlänge des Codeworts
+    codeword_length = message_length + check_bits
+
+    # Liste für gültige Codeworte
+    codewords = []
+
+    # Generiere alle möglichen Nachrichtenmuster
+    for i in range(2 ** message_length):
+        # In Binärdarstellung umwandeln und mit führenden Nullen auffüllen
+        message = bin(i)[2:].zfill(message_length)
+
+        # Kontrollbits mit CRC-ähnlicher Methode berechnen
+        padded_message = message + '0' * check_bits
+        remainder = mod2div(padded_message, generator)
+
+        # Vollständiges Codewort erstellen
+        codeword = message + remainder
+
+        codewords.append(codeword)
+
+    return codewords
+
+
+def create_parity_matrix_from_generator(generator):
+    """
+    Erstellt eine Prüfmatrix für einen zyklischen Code
+
+    Args:
+        generator (str): Generator-Polynom (Bitfolge)
+
+    Returns:
+        list: Prüfmatrix als Liste von Zeilen
+    """
+    # Generator-Polynom bereinigen
+    generator = generator.lstrip('0')
+    if not generator:
+        generator = '0'
+
+    # Anzahl der Kontrollbits = Grad des Generator-Polynoms
+    r = len(generator) - 1
+
+    # Für einen Standard-zyklischen Code ist die Codewortlänge 2^r - 1
+    n = 2 ** r - 1
+
+    # Prüfmatrix initialisieren
+    H = []
+
+    # Bei zyklischen Codes ist jede Zeile von H eine zyklische Verschiebung der vorherigen
+    for i in range(r):
+        row = [0] * n
+
+        # Für die erste Zeile verwende das Generator-Polynom
+        if i == 0:
+            for j in range(len(generator)):
+                if j < n:
+                    row[j] = int(generator[j])
+        else:
+            # Für nachfolgende Zeilen verwende eine zyklische Verschiebung
+            prev_row = H[i - 1]
+            # Zyklische Verschiebung nach rechts
+            row = [prev_row[-1]] + prev_row[:-1]
+
+        H.append(row)
+
+    return H
+
+
+def zyklischer_code_menu():
+    global current_menu
+    current_menu = "zyklisch"
+
+    while current_menu == "zyklisch":
+        clear_screen()
+        print("==== Zyklische Codes ====")
+        print("1. Polynomdivision für Syndromberechnung")
+        print("2. Schnelle Mehrfachaddition")
+        print("3. Zyklische Codeworte generieren")
+        print("4. Syndromtabelle für zyklischen Code erstellen")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Polynomdivision für Syndrom
+            clear_screen()
+            print("==== Polynomdivision für Syndrom ====")
+            try:
+                message = input("Nachricht oder empfangenes Codewort: ")
+                generator = input("Generator-Polynom (Bitfolge): ")
+
+                syndrome = polynomial_division_for_syndrome(message, generator)
+                print(f"\nSyndrom: {syndrome}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Schnelle Mehrfachaddition
+            clear_screen()
+            print("==== Schnelle Mehrfachaddition ====")
+            try:
+                generator = input("Generator-Polynom (Bitfolge): ")
+                codeword = input("Codewort (Bitfolge): ")
+                show_steps = input("Berechnungsschritte anzeigen? (j/n): ").lower() == 'j'
+
+                if show_steps:
+                    is_valid, steps, result = fast_multiple_addition(generator, codeword, True)
+
+                    print("\nBerechnungsschritte:")
+                    for i, step in enumerate(steps):
+                        if i == 0:
+                            print(f"Codewort: {step}")
+                        else:
+                            print(f"Schritt {i}: {step}")
+                else:
+                    is_valid, result = fast_multiple_addition(generator, codeword, False)
+
+                print(f"\nErgebnis: {result}")
+                if is_valid:
+                    print("Das Codewort ist gültig!")
+                else:
+                    print("Das Codewort enthält Fehler!")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # Zyklische Codeworte generieren
+            clear_screen()
+            print("==== Zyklische Codeworte generieren ====")
+            try:
+                generator = input("Generator-Polynom (Bitfolge): ")
+                message_length = int(input("Nachrichtenlänge: "))
+
+                codewords = generate_cyclic_codewords(generator, message_length)
+
+                print(f"\nAnzahl der gültigen Codeworte: {len(codewords)}")
+                print("\nEinige Beispiel-Codeworte:")
+                for i in range(min(10, len(codewords))):
+                    print(codewords[i])
+
+                if len(codewords) > 10:
+                    print("...")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "4":
+            # Syndromtabelle erstellen
+            clear_screen()
+            print("==== Syndromtabelle für zyklischen Code erstellen ====")
+            try:
+                generator = input("Generator-Polynom (Bitfolge): ")
+                codeword_length = input("Codewortlänge (Optional, leer für 2^r-1): ")
+
+                if codeword_length:
+                    codeword_length = int(codeword_length)
+                    syndrome_table = create_syndrome_table_for_cyclic_code(generator, codeword_length)
+                else:
+                    syndrome_table = create_syndrome_table_for_cyclic_code(generator)
+
+                print("\nSyndromtabelle für Fehlerstellen:")
+                print(f"{'Fehler':<8} {'Syndrom':<15} {'Binär'}")
+                print("-" * 40)
+
+                for error_term, (poly_form, bin_form) in syndrome_table.items():
+                    bin_str = f"[{' '.join(str(bit) for bit in bin_form)}]"
+                    print(f"{error_term:<8} {poly_form:<15} {bin_str}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
+def polynomial_menu():
+    global current_menu
+    current_menu = "polynomial"
+
+    while current_menu == "polynomial":
+        clear_screen()
+        print("==== Polynomprüfung ====")
+        print("1. Prüfen ob Polynom reduzibel/irreduzibel ist")
+        print("2. Prüfen ob Polynom primitiv ist")
+        print("3. Elemente des Erweiterungsfelds generieren")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Irreduzibilitätsprüfung
+            clear_screen()
+            print("==== Polynom auf Irreduzibilität prüfen ====")
+            try:
+                poly_str = input("Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                poly = [int(bit) for bit in poly_str]
+
+                # Entferne führende Nullen
+                while poly and poly[0] == 0:
+                    poly = poly[1:]
+
+                if not poly:
+                    print("\nUngültiges Polynom (leer).")
+                else:
+                    result = is_irreducible_polynomial(poly)
+
+                    # Zeige Polynom in Standardnotation
+                    poly_terms = []
+                    degree = len(poly) - 1
+                    for i, coeff in enumerate(poly):
+                        if coeff == 1:
+                            power = degree - i
+                            if power == 0:
+                                poly_terms.append("1")
+                            elif power == 1:
+                                poly_terms.append("x")
+                            else:
+                                poly_terms.append(f"x^{power}")
+
+                    poly_notation = " + ".join(poly_terms)
+
+                    print(f"\nPolynom: {poly_notation}")
+                    if result:
+                        print("Das Polynom ist irreduzibel.")
+                    else:
+                        print("Das Polynom ist reduzibel (faktorisierbar).")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Primitivitätsprüfung
+            clear_screen()
+            print("==== Polynom auf Primitivität prüfen ====")
+            print("Hinweis: Diese Berechnung kann für Polynome mit Grad > 4 sehr lange dauern.")
+            try:
+                poly_str = input("Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                poly = [int(bit) for bit in poly_str]
+
+                # Entferne führende Nullen
+                while poly and poly[0] == 0:
+                    poly = poly[1:]
+
+                if not poly:
+                    print("\nUngültiges Polynom (leer).")
+                else:
+                    degree = len(poly) - 1
+
+                    if degree > 4:
+                        confirm = input(
+                            f"Das Polynom hat Grad {degree}, was eine lange Berechnung erfordert. Fortfahren? (j/n): ")
+                        if confirm.lower() != 'j':
+                            raise Exception("Berechnung abgebrochen")
+
+                    result = is_primitive_polynomial(poly)
+
+                    # Zeige Polynom in Standardnotation
+                    poly_terms = []
+                    for i, coeff in enumerate(poly):
+                        if coeff == 1:
+                            power = degree - i
+                            if power == 0:
+                                poly_terms.append("1")
+                            elif power == 1:
+                                poly_terms.append("x")
+                            else:
+                                poly_terms.append(f"x^{power}")
+
+                    poly_notation = " + ".join(poly_terms)
+
+                    print(f"\nPolynom: {poly_notation}")
+                    if result:
+                        print("Das Polynom ist primitiv.")
+                    else:
+                        print("Das Polynom ist NICHT primitiv.")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # Erweiterungsfeld-Elemente
+            clear_screen()
+            print("==== Erweiterungsfeld-Elemente generieren ====")
+            print("Hinweis: Diese Funktion ist für Felder mit Grad ≤ 4 optimiert.")
+            try:
+                poly_str = input("Primitives Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                poly = [int(bit) for bit in poly_str]
+
+                # Entferne führende Nullen
+                while poly and poly[0] == 0:
+                    poly = poly[1:]
+
+                if not poly:
+                    print("\nUngültiges Polynom (leer).")
+                else:
+                    degree = len(poly) - 1
+                    max_elements = 2 ** degree - 1
+
+                    if degree > 4:
+                        confirm = input(
+                            f"Das Polynom erzeugt ein Feld GF(2^{degree}) mit {max_elements} Elementen. Anzahl der anzuzeigenden Elemente eingeben (max {max_elements}): ")
+                        limit = int(confirm) if confirm else max_elements
+                    else:
+                        limit = max_elements
+
+                    elements = generate_extension_field_elements(poly, min(limit, max_elements))
+
+                    print(f"\nElemente des Erweiterungsfelds GF(2^{degree}):")
+                    for i, element in enumerate(elements):
+                        # Binärdarstellung
+                        bin_repr = ''.join(str(bit) for bit in element)
+
+                        # Polynomdarstellung
+                        poly_terms = []
+                        for j, bit in enumerate(element):
+                            if bit == 1:
+                                power = degree - 1 - j
+                                if power == 0:
+                                    poly_terms.append("1")
+                                elif power == 1:
+                                    poly_terms.append("x")
+                                else:
+                                    poly_terms.append(f"x^{power}")
+
+                        poly_repr = " + ".join(poly_terms) if poly_terms else "0"
+
+                        # Kompakte Darstellung für α-Potenz
+                        if i == 0:
+                            alpha_repr = "1"
+                        else:
+                            alpha_repr = f"α^{i}"
+
+                        print(f"{alpha_repr:>6} = {poly_repr:>12} = {bin_repr}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
+#####################
+# Quellen mit Gedächtnis #
+#####################
+
+def compute_stationary_distribution(transition_matrix):
+    """
+    Berechnet näherungsweise die stationäre Verteilung einer Markov-Kette
+    Verwendet Potenzmethode statt Matrixinversion (MicroPython-kompatibel)
+    """
+    n = len(transition_matrix)
+    # Starte mit Gleichverteilung
+    pi = [1.0 / n] * n
+
+    # Iteration der Potenzmethode
+    for _ in range(50):  # 50 Iterationen für Konvergenz
+        new_pi = [0] * n
+        for j in range(n):
+            for i in range(n):
+                new_pi[j] += pi[i] * transition_matrix[i][j]
+
+        # Normalisiere
+        total = sum(new_pi)
+        pi = [p / total for p in new_pi]
+
+    return pi
+
+
+def joint_probability(px, pyx):
+    """
+    Berechnet die gemeinsame Wahrscheinlichkeit P(X,Y) aus P(X) und P(Y|X)
+    """
+    pxy = []
+    for i in range(len(px)):
+        row = []
+        for j in range(len(pyx[i])):
+            p = px[i] * pyx[i][j]
+            row.append(p)
+        pxy.append(row)
+
+    return pxy
+
+
+def marginal_probability_y(pxy):
+    """
+    Berechnet die Randwahrscheinlichkeiten P(Y) aus P(X,Y)
+    """
+    if not pxy:
+        return []
+
+    n_y = len(pxy[0])
+    py = [0] * n_y
+
+    for i in range(len(pxy)):
+        for j in range(n_y):
+            py[j] += pxy[i][j]
+
+    return py
+
+
+def conditional_entropy_yx(pxy, px):
+    """
+    Berechnet die bedingte Entropie H(Y|X)
+    """
+    h_yx = 0.0
+
+    # Berechne P(Y|X) aus P(X,Y) und P(X)
+    for i in range(len(px)):
+        if px[i] == 0:
+            continue
+
+        for j in range(len(pxy[i])):
+            if pxy[i][j] > 0:
+                # P(Y|X) = P(X,Y) / P(X)
+                p_y_given_x = pxy[i][j] / px[i]
+                h_yx -= pxy[i][j] * math.log2(p_y_given_x)
+
+    return h_yx
+
+
+def entropy_with_memory(transition_matrix):
+    """
+    Berechnet die Entropie einer Quelle mit Gedächtnis (Markov-Quelle)
+    """
+    # Berechne stationäre Verteilung
+    pi = compute_stationary_distribution(transition_matrix)
+
+    # Berechne bedingte Entropie H(X_t+1 | X_t)
+    h_cond = 0.0
+    for i in range(len(pi)):
+        for j in range(len(transition_matrix[i])):
+            if pi[i] > 0 and transition_matrix[i][j] > 0:
+                h_cond -= pi[i] * transition_matrix[i][j] * math.log2(transition_matrix[i][j])
+
+    # Berechne Entropie der stationären Verteilung H(X)
+    h_stationary = 0.0
+    for p in pi:
+        if p > 0:
+            h_stationary -= p * math.log2(p)
+
+    return {
+        "stationary_distribution": pi,
+        "conditional_entropy": h_cond,
+        "stationary_entropy": h_stationary,
+        "entropy_rate": h_cond
+    }
+
+
+#####################
+# Menü-Funktionen #
+#####################
+
+def markov_menu():
+    global current_menu
+    current_menu = "markov"
+
+    while current_menu == "markov":
+        clear_screen()
+        print("==== Markov-Quellen und Gedächtnis ====")
+        print("1. Verbundwahrscheinlichkeiten berechnen")
+        print("2. Bedingte Entropie berechnen")
+        print("3. Entropie für Quellen mit Gedächtnis")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Verbundwahrscheinlichkeiten
+            clear_screen()
+            print("==== Verbundwahrscheinlichkeiten ====")
+            try:
+                n_x = int(input("Anzahl der X-Symbole: "))
+                n_y = int(input("Anzahl der Y-Symbole: "))
+
+                print("\nP(X) Wahrscheinlichkeiten:")
+                px = []
+                for i in range(n_x):
+                    p = float(input(f"P(X={i + 1}): "))
+                    px.append(p)
+
+                print("\nBedingte Wahrscheinlichkeiten P(Y|X):")
+                pyx = []
+                for i in range(n_x):
+                    print(f"Für X={i + 1}:")
+                    row = []
+                    for j in range(n_y):
+                        p = float(input(f"P(Y={j + 1}|X={i + 1}): "))
+                        row.append(p)
+                    pyx.append(row)
+
+                # Berechne Verbundwahrscheinlichkeiten
+                pxy = joint_probability(px, pyx)
+
+                # Berechne Randwahrscheinlichkeiten für Y
+                py = marginal_probability_y(pxy)
+
+                print("\nVerbundwahrscheinlichkeiten P(X,Y):")
+                for i in range(n_x):
+                    for j in range(n_y):
+                        print(f"P(X={i + 1},Y={j + 1}) = {pxy[i][j]:.6f}")
+
+                print("\nRandwahrscheinlichkeiten P(Y):")
+                for j in range(n_y):
+                    print(f"P(Y={j + 1}) = {py[j]:.6f}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Bedingte Entropie
+            clear_screen()
+            print("==== Bedingte Entropie ====")
+            try:
+                n_x = int(input("Anzahl der X-Symbole: "))
+                n_y = int(input("Anzahl der Y-Symbole: "))
+
+                print("\nP(X) Wahrscheinlichkeiten:")
+                px = []
+                for i in range(n_x):
+                    p = float(input(f"P(X={i + 1}): "))
+                    px.append(p)
+
+                print("\nVerbundwahrscheinlichkeiten P(X,Y):")
+                pxy = []
+                for i in range(n_x):
+                    print(f"Für X={i + 1}:")
+                    row = []
+                    for j in range(n_y):
+                        p = float(input(f"P(X={i + 1},Y={j + 1}): "))
+                        row.append(p)
+                    pxy.append(row)
+
+                # Berechne bedingte Entropie
+                h_yx = conditional_entropy_yx(pxy, px)
+
+                print(f"\nBedingte Entropie H(Y|X) = {h_yx:.6f} bits")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # Entropie mit Gedächtnis
+            clear_screen()
+            print("==== Entropie für Quellen mit Gedächtnis ====")
+            try:
+                n = int(input("Anzahl der Zustände: "))
+
+                print("\nÜbergangsmatrix eingeben:")
+                transition_matrix = []
+                for i in range(n):
+                    print(f"Für Zustand {i + 1}:")
+                    row = []
+                    for j in range(n):
+                        p = float(input(f"P(Zustand {j + 1}|Zustand {i + 1}): "))
+                        row.append(p)
+                    transition_matrix.append(row)
+
+                # Berechne Entropie
+                result = entropy_with_memory(transition_matrix)
+
+                print("\nErgebnisse:")
+                print("Stationäre Verteilung:")
+                for i, p in enumerate(result["stationary_distribution"]):
+                    print(f"π_{i + 1} = {p:.6f}")
+
+                print(f"\nStationäre Entropie H(X) = {result['stationary_entropy']:.6f} bits")
+                print(f"Bedingte Entropie H(X_t+1|X_t) = {result['conditional_entropy']:.6f} bits")
+                print(f"Entropierate = {result['entropy_rate']:.6f} bits pro Symbol")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
+#####################
+# Blockcode-Eigenschaften #
+#####################
+
+def factorial(n):
+    """Einfache Fakultätsberechnung für MicroPython"""
+    if n == 0 or n == 1:
+        return 1
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+
+
+def binomial(n, k):
+    """Binomialkoeffizient ohne math.comb für MicroPython"""
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1
+
+    # Berechne n! / (k! * (n-k)!)
+    return factorial(n) // (factorial(k) * factorial(n - k))
+
+
+def is_densely_packed(n, k, d):
+    """
+    Prüft, ob ein Blockcode dichtgepackt ist
+    """
+    # Berechne die Anzahl der Codewörter (2^k)
+    num_codewords = 2 ** k
+
+    # Anzahl der Bits, die korrigiert werden können
+    t = (d - 1) // 2
+
+    # Berechne die Anzahl der Wörter innerhalb der Korrekturkugel
+    sphere_size = 0
+    for i in range(t + 1):
+        # Anzahl der möglichen Positionen für i Fehler
+        sphere_size += binomial(n, i)
+
+    # Ein Code ist dichtgepackt, wenn:
+    total_words = 2 ** n
+    packed_size = num_codewords * sphere_size
+
+    return total_words == packed_size
+
+
+def create_hamming_parity_matrix(r):
+    """
+    Erzeugt eine Prüfmatrix für einen Hamming-Code
+    """
+    n = 2 ** r - 1  # Länge des Hamming-Codes
+
+    # Initialisiere die Prüfmatrix mit Nullen
+    H = [[0 for _ in range(n)] for _ in range(r)]
+
+    # Fülle die Prüfmatrix
+    for j in range(n):
+        # j+1 als r-bit Binärdarstellung
+        col_idx = j + 1
+        binary = bin(col_idx)[2:].zfill(r)
+        binary = binary[-r:]  # Nimm nur die letzten r Bits
+
+        for i in range(r):
+            H[i][j] = int(binary[r - i - 1])  # Richtiger Index für Hamming-Code
+
+    return H
+
+
+#####################
+# Polynomprüfung #
+#####################
+
+def polynomial_division_gf2(dividend, divisor):
+    """
+    Polynomiale Division im GF(2)
+
+    Argumente:
+        dividend, divisor: Listen mit Koeffizienten, höchste Potenz zuerst
+    Rückgabe:
+        (quotient, remainder): Tupel mit Ergebnispolynomen
+    """
+    # Entferne führende Nullen
+    while len(dividend) > 0 and dividend[0] == 0:
+        dividend = dividend[1:]
+    while len(divisor) > 0 and divisor[0] == 0:
+        divisor = divisor[1:]
+
+    if not divisor:
+        raise ValueError("Division durch Null")
+
+    if not dividend:
+        return [0], [0]
+
+    if len(dividend) < len(divisor):
+        return [0], dividend.copy()
+
+    quotient = [0] * (len(dividend) - len(divisor) + 1)
+    remainder = dividend.copy()
+
+    for i in range(len(quotient)):
+        if remainder[i] == 1:
+            quotient[i] = 1
+            for j in range(len(divisor)):
+                remainder[i + j] = (remainder[i + j] + divisor[j]) % 2
+
+    # Entferne führende Nullen im Rest
+    while len(remainder) > 0 and remainder[0] == 0:
+        remainder = remainder[1:]
+
+    # Falls Rest leer ist, setze ihn auf [0]
+    if not remainder:
+        remainder = [0]
+
+    return quotient, remainder
+
+
+def is_irreducible_polynomial(poly):
+    """
+    Prüft, ob ein Polynom irreduzibel ist im GF(2)
+
+    Argument:
+        poly: Liste mit Koeffizienten, höchste Potenz zuerst
+    Rückgabe:
+        bool: True wenn irreduzibel, False sonst
+    """
+    # Entferne führende Nullen
+    while poly and poly[0] == 0:
+        poly = poly[1:]
+
+    if not poly or len(poly) <= 1:
+        return False  # Konstante oder leeres Polynom
+
+    degree = len(poly) - 1
+
+    # Brute-Force-Methode: Prüfe alle möglichen Faktoren bis Grad degree//2
+    for d in range(1, degree // 2 + 1):
+        # Generiere alle möglichen Polynome vom Grad d
+        for coeffs in generate_all_polynomials(d):
+            # Füge eine 1 für den höchsten Koeffizienten hinzu
+            test_poly = [1] + coeffs
+
+            # Prüfe ob test_poly ein Teiler ist
+            _, remainder = polynomial_division_gf2(poly, test_poly)
+
+            if remainder == [0]:
+                return False  # Gefunden: test_poly ist ein Teiler
+
+    return True
+
+
+def generate_all_polynomials(degree):
+    """
+    Generiert alle möglichen Polynome vom Grad < degree im GF(2)
+
+    Argument:
+        degree: Maximaler Grad
+    Rückgabe:
+        Liste aller möglichen Polynomkoeffizienten (ohne höchsten Koeffizienten)
+    """
+    result = []
+
+    # 2^degree mögliche Kombinationen
+    for i in range(2 ** degree):
+        # Konvertiere i in Binärdarstellung
+        binary = bin(i)[2:].zfill(degree)
+        coeffs = [int(bit) for bit in binary]
+        result.append(coeffs)
+
+    return result
+
+
+def is_primitive_polynomial(poly):
+    """
+    Prüft, ob ein Polynom primitiv ist im GF(2)
+    Ein primitives Polynom muss:
+    1. Irreduzibel sein
+    2. Die Periode 2^degree - 1 haben
+
+    Argument:
+        poly: Liste mit Koeffizienten, höchste Potenz zuerst
+    Rückgabe:
+        bool: True wenn primitiv, False sonst
+    """
+    # Entferne führende Nullen
+    while poly and poly[0] == 0:
+        poly = poly[1:]
+
+    if not poly or len(poly) <= 1:
+        return False  # Konstante oder leeres Polynom
+
+    # Prüfe auf Irreduzibilität
+    if not is_irreducible_polynomial(poly):
+        return False
+
+    degree = len(poly) - 1
+    period = 2 ** degree - 1
+
+    # Für sehr kleine Grade können wir eine direkte Prüfung durchführen
+    if degree <= 4:  # Für größere Grade wird die Berechnung zu aufwändig
+        # Prüfe, ob das Polynom eine maximale Periode hat
+        x = [0] * (degree + 1)
+        x[degree - 1] = 1  # x entspricht x^1
+
+        state = x.copy()
+        seen_states = [state.copy()]
+
+        for _ in range(period):
+            # Berechne x * state mod poly
+            state = multiply_polynomials_gf2(x, state)
+            state = polynomial_mod_gf2(state, poly)
+
+            # Prüfe, ob dieser Zustand bereits gesehen wurde
+            if state in seen_states and state != [0] * degree + [1]:
+                return False
+
+            seen_states.append(state.copy())
+
+        # Wenn wir alle Zustände durchlaufen haben, ist das Polynom primitiv
+        return True
+
+    # Für größere Grade: approximiere über bekannte Eigenschaften
+    # (Dies ist eine Vereinfachung - für eine genaue Prüfung sind umfangreichere Berechnungen nötig)
+    return is_irreducible_polynomial(poly)
+
+
+def multiply_polynomials_gf2(a, b):
+    """
+    Multipliziert zwei Polynome im GF(2)
+
+    Argumente:
+        a, b: Listen mit Koeffizienten, höchste Potenz zuerst
+    Rückgabe:
+        Liste mit Koeffizienten des Produkts
+    """
+    if not a or not b:
+        return [0]
+
+    result = [0] * (len(a) + len(b) - 1)
+
+    for i in range(len(a)):
+        for j in range(len(b)):
+            if a[i] and b[j]:
+                result[i + j] = (result[i + j] + 1) % 2
+
+    return result
+
+
+def polynomial_mod_gf2(poly, modulus):
+    """
+    Berechnet poly mod modulus im GF(2)
+
+    Argumente:
+        poly, modulus: Listen mit Koeffizienten, höchste Potenz zuerst
+    Rückgabe:
+        Liste mit Koeffizienten des Rests
+    """
+    _, remainder = polynomial_division_gf2(poly, modulus)
+    return remainder
+
+
+def generate_extension_field_elements(poly, max_elements=None):
+    """
+    Generiert Elemente des Erweiterungsfelds GF(2^m) mit dem gegebenen Polynom
+
+    Argumente:
+        poly: Primitives Polynom als Liste mit Koeffizienten, höchste Potenz zuerst
+        max_elements: Maximale Anzahl zu generierender Elemente (für große Felder)
+    Rückgabe:
+        Liste der generierten Elemente
+    """
+    degree = len(poly) - 1
+    if not max_elements:
+        max_elements = 2 ** degree - 1
+
+    # Initialisiere mit α^1 (entspricht x)
+    alpha = [0] * degree
+    alpha[degree - 2] = 1  # x entspricht der Basis im Erweiterungsfeld
+
+    elements = [[1] + [0] * (degree - 1)]  # Starte mit 1 (α^0)
+    elements.append(alpha.copy())  # Füge α^1 hinzu
+
+    # Berechne α^i für i = 2 bis max_elements
+    for i in range(2, max_elements + 1):
+        # α^i = α^(i-1) * α
+        next_power = [0] * (2 * degree - 1)  # Produkt hat Grad 2*degree-2
+
+        # Multiplikation: alpha^(i-1) * alpha
+        for j in range(degree):
+            if elements[-1][j] == 1:
+                for k in range(degree):
+                    if alpha[k] == 1:
+                        next_power[j + k] = (next_power[j + k] + 1) % 2
+
+        # Reduktion modulo des primitiven Polynoms
+        result = [0] * degree
+
+        # Kopiere die niedrigen Koeffizienten direkt
+        for j in range(degree):
+            result[j] = next_power[j]
+
+        # Reduziere die höheren Koeffizienten
+        for j in range(degree, len(next_power)):
+            if next_power[j] == 1:
+                # Subtrahiere x^(j-degree) * primitives_polynom
+                for k in range(len(poly)):
+                    if poly[k] == 1:
+                        idx = j - degree + k
+                        if idx < len(result):
+                            result[idx] = (result[idx] + 1) % 2
+
+        elements.append(result)
+
+    return elements
+
+def blockcode_menu():
+    global current_menu
+    current_menu = "blockcode"
+
+    while current_menu == "blockcode":
+        clear_screen()
+        print("==== Blockcode-Eigenschaften ====")
+        print("1. Prüfen ob Code dichtgepackt ist")
+        print("2. Hamming-Prüfmatrix generieren")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Dichtgepackt prüfen
+            clear_screen()
+            print("==== Prüfen ob Code dichtgepackt ist ====")
+            try:
+                n = int(input("Codewortlänge n: "))
+                k = int(input("Anzahl Informationsbits k: "))
+                d = int(input("Minimale Hamming-Distanz d: "))
+
+                result = is_densely_packed(n, k, d)
+
+                if result:
+                    print(f"\nDer ({n},{k},{d})-Code ist dichtgepackt!")
+                else:
+                    print(f"\nDer ({n},{k},{d})-Code ist NICHT dichtgepackt.")
+
+                # Zeige Berechnungsdetails
+                num_codewords = 2 ** k
+                t = (d - 1) // 2
+
+                sphere_size = 0
+                for i in range(t + 1):
+                    sphere_size += binomial(n, i)
+
+                total_words = 2 ** n
+                packed_size = num_codewords * sphere_size
+
+                print(f"\nAnzahl der Codewörter: 2^{k} = {num_codewords}")
+                print(f"Korrigierbare Fehler: t = ({d}-1)/2 = {t}")
+                print(f"Größe der Korrekturkugel: {sphere_size}")
+                print(f"Anzahl aller Wörter: 2^{n} = {total_words}")
+                print(f"Codewörter * Kugel: {num_codewords} * {sphere_size} = {packed_size}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Hamming-Prüfmatrix
+            clear_screen()
+            print("==== Hamming-Prüfmatrix generieren ====")
+            try:
+                r = int(input("Anzahl der Prüfbits r: "))
+
+                H = create_hamming_parity_matrix(r)
+                n = 2 ** r - 1
+
+                print(f"\nPrüfmatrix für ({n},{n - r},{3})-Hamming-Code:")
+                for i in range(r):
+                    print(' '.join(str(bit) for bit in H[i]))
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
 def main_menu():
     global current_menu
     current_menu = "main"
@@ -1231,7 +2348,11 @@ def main_menu():
         print("4. Faltungscodes")
         print("5. Kanalmodell")
         print("6. Binärzahlen und Darstellung")
-        print("7. Beenden")
+        print("7. Zyklische Codes")
+        print("8. Markov-Quellen und Gedächtnis")  # Neue Option
+        print("9. Blockcode-Eigenschaften")       # Neue Option
+        print("10. Polynomprüfung")               # Neue Option
+        print("0. Beenden")
 
         choice = input("\nWähle eine Option: ")
 
@@ -1248,13 +2369,19 @@ def main_menu():
         elif choice == "6":
             binär_menu()
         elif choice == "7":
+            zyklischer_code_menu()
+        elif choice == "8":
+            markov_menu()  # Neues Menü
+        elif choice == "9":
+            blockcode_menu()  # Neues Menü
+        elif choice == "10":
+            polynomial_menu()  # Neues Menü
+        elif choice == "0":
             print("Beenden des Programms...")
             break
         else:
             print("Ungültige Eingabe!")
             pause()
-
-
 # Starte das Programm
 if __name__ == "__main__":
     main_menu()

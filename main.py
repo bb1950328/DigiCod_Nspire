@@ -1,16 +1,33 @@
+import math  # Add this at the top of the file
 
 class Tool(object):
-    NAME = "?"
-
     # abstract
     def run(self) -> None:
         raise NotImplementedError(f"{self.__class__.__name__} must implement run()")
 
 class BaseConversionTool(Tool):
-    NAME = "Basisumwandlung"
 
     def run(self) -> None:
         print("Tool Basisumwandlung....")
+
+class EntropyTool(Tool):
+    def run(self) -> None:
+        print("==== Entropie berechnen ====")
+        try:
+            n = int(input("Anzahl der Symbole: "))
+            probs = []
+            for i in range(n):
+                p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
+                probs.append(p)
+
+            result = -sum(p1 * math.log2(p1) for p1 in probs if p1 > 0)
+            print(f"\nEntropie: {result:.6f} bits/Symbol")
+        except Exception as e:
+            print(f"Fehler: {str(e)}")
+            
+        # Pause functionality from icth_tool.py
+        print("\nDrücke Enter, um fortzufahren...")
+        input()
 
 class ToolNode(object):
     def __init__(self, nr: int, name: str) -> None:
@@ -28,11 +45,11 @@ class ToolEntry(ToolNode):
         self.cls = cls
 
 TOOLS = [
-    ToolGroup(1, "Group1", [
-        ToolEntry(1, "Basisumwandlung", BaseConversionTool),
+    ToolGroup(1, "Informationstheorie", [
+        ToolEntry(1, "Entropie berechnen", EntropyTool),
+        ToolEntry(2, "Basisumwandlung", BaseConversionTool),
     ]),
 ]
-
 
 def find_tool_by_path(path: list[int], tools: list[ToolNode]) -> ToolEntry | ToolGroup | None:
     current_tools = tools

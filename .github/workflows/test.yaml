@@ -12,6 +12,11 @@ on:
 jobs:
   micropython-test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        micropython-version: [latest, v1.11]
+    
+    name: MicroPython ${{ matrix.micropython-version }} Test
 
     steps:
     - name: Checkout code
@@ -22,13 +27,25 @@ jobs:
         sudo apt update
         sudo apt install -y build-essential libffi-dev pkg-config
 
-    - name: Build MicroPython Unix port
+    - name: Build MicroPython Unix port (latest)
+      if: matrix.micropython-version == 'latest'
       run: |
         git clone https://github.com/micropython/micropython.git
         cd micropython/ports/unix
         make submodules
         make
         echo "MICROPYTHON=$(pwd)/build-standard/micropython" >> $GITHUB_ENV
+
+    - name: Build MicroPython Unix port (older)
+      if: matrix.micropython-version != 'latest'
+      run: |
+        sudo apt install gcc-10 g++-10
+        git clone --depth 1 -b ${{ matrix.micropython-version }} https://github.com/micropython/micropython.git
+        cd micropython
+        git submodule update --init
+        cd ports/unix
+        CFLAGS="-Wno-error" make
+        echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython
       run: |

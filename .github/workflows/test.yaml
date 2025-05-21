@@ -43,7 +43,7 @@ jobs:
         cd micropython
         git submodule update --init
         cd ports/unix
-        make
+        make CFLAGS_EXTRA="-Wno-dangling-pointer"
         echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython

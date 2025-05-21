@@ -2335,6 +2335,1008 @@ def blockcode_menu():
             current_menu = "main"
 
 
+#####################
+# Erweiterte Kanalmodelle #
+#####################
+
+def create_channel_matrix(type="binary_symmetric", error_prob=0.1, n_inputs=2, n_outputs=2):
+    """
+    Erstellt verschiedene Kanalmatrizen für Kommunikationssysteme
+
+    Args:
+        type (str): "perfect" (nicht gestört), "fully_disturbed" (vollständig gestört),
+                    "binary_symmetric" (BSC), oder "custom"
+        error_prob (float): Fehlerwahrscheinlichkeit (für BSC)
+        n_inputs (int): Anzahl der Eingangssymbole
+        n_outputs (int): Anzahl der Ausgangssymbole (für custom)
+
+    Returns:
+        list: Die Kanalmatrix P(Y|X)
+    """
+    if type == "perfect":
+        # Vollständiger, nicht gestörter Kanal: Identitätsmatrix
+        matrix = [[0] * n_inputs for _ in range(n_inputs)]
+        for i in range(n_inputs):
+            matrix[i][i] = 1.0
+        return matrix
+
+    elif type == "fully_disturbed":
+        # Vollständig gestörter Kanal: Alle Ausgänge gleich wahrscheinlich
+        matrix = [[1.0 / n_outputs] * n_outputs for _ in range(n_inputs)]
+        return matrix
+
+    elif type == "binary_symmetric":
+        # Binärer symmetrischer Kanal (BSC)
+        if n_inputs != 2 or n_outputs != 2:
+            raise ValueError("BSC erfordert 2 Eingangs- und 2 Ausgangssymbole")
+
+        matrix = [[0] * 2 for _ in range(2)]
+        matrix[0][0] = 1.0 - error_prob
+        matrix[0][1] = error_prob
+        matrix[1][0] = error_prob
+        matrix[1][1] = 1.0 - error_prob
+        return matrix
+
+    elif type == "custom":
+        # Leere Matrix für benutzerdefinierte Werte
+        return [[0] * n_outputs for _ in range(n_inputs)]
+
+    else:
+        raise ValueError(f"Unbekannter Kanaltyp: {type}")
+
+
+def channel_simulate(input_symbols, channel_matrix, iterations=1000):
+    """
+    Simuliert die Übertragung von Symbolen durch einen Kanal
+
+    Args:
+        input_symbols (list): Sequenz von Eingangsindizes
+        channel_matrix (list): Kanalmatrix P(Y|X)
+        iterations (int): Anzahl der Simulationsdurchläufe
+
+    Returns:
+        dict: Statistiken über die Übertragung (Fehlerrate, Häufigkeiten)
+    """
+    import random
+
+    n_inputs = len(channel_matrix)
+    n_outputs = len(channel_matrix[0]) if channel_matrix else 0
+
+    error_count = 0
+    output_counts = [0] * n_outputs
+    conditional_counts = [[0] * n_outputs for _ in range(n_inputs)]
+
+    for _ in range(iterations):
+        for x in input_symbols:
+            # Wähle Ausgangssymbol basierend auf Übergangswahrscheinlichkeiten
+            rand_val = random.random()
+            cumulative_prob = 0
+            y = 0
+
+            for j in range(n_outputs):
+                cumulative_prob += channel_matrix[x][j]
+                if rand_val <= cumulative_prob:
+                    y = j
+                    break
+
+            # Zähle Fehler und Häufigkeiten
+            if x != y:
+                error_count += 1
+
+            output_counts[y] += 1
+            conditional_counts[x][y] += 1
+
+    # Berechne statistische Werte
+    total_symbols = len(input_symbols) * iterations
+    error_rate = error_count / total_symbols
+
+    # Normalisiere die Häufigkeiten
+    output_probs = [count / total_symbols for count in output_counts]
+
+    input_counts = [0] * n_inputs
+    for x in input_symbols:
+        input_counts[x] += 1
+
+    # Berechne bedingte Wahrscheinlichkeiten
+    conditional_probs = [[0] * n_outputs for _ in range(n_inputs)]
+    for i in range(n_inputs):
+        total_i = input_counts[i] * iterations
+        if total_i > 0:
+            for j in range(n_outputs):
+                conditional_probs[i][j] = conditional_counts[i][j] / total_i
+
+    return {
+        "error_rate": error_rate,
+        "output_probs": output_probs,
+        "conditional_probs": conditional_probs
+    }
+
+
+#####################
+# Entscheiderfunktionen #
+#####################
+
+def maximum_a_posteriori_decoder(channel_matrix, prior_probs):
+    """
+    Implementiert einen Maximum-a-posteriori (MAP) Entscheider
+
+    Args:
+        channel_matrix (list): Kanalmatrix P(Y|X)
+        prior_probs (list): A-priori-Wahrscheinlichkeiten P(X)
+
+    Returns:
+        list: MAP-Entscheidungstabelle (Index des wahrscheinlichsten Eingangssymbols für jedes Ausgangssymbol)
+    """
+    if not channel_matrix or not prior_probs:
+        return []
+
+    n_inputs = len(channel_matrix)
+    n_outputs = len(channel_matrix[0])
+
+    decoder = []
+
+    # Berechne für jedes Ausgangssymbol
+    for j in range(n_outputs):
+        max_prob = -1
+        max_index = -1
+
+        # Berechne a-posteriori-Wahrscheinlichkeit P(X|Y) für jedes Eingangssymbol
+        for i in range(n_inputs):
+            # P(X|Y) = P(Y|X) * P(X) / P(Y), wir benötigen nur den Zähler für den Vergleich
+            prob = channel_matrix[i][j] * prior_probs[i]
+
+            if prob > max_prob:
+                max_prob = prob
+                max_index = i
+
+        decoder.append(max_index)
+
+    return decoder
+
+
+def minimum_error_decoder(channel_matrix, prior_probs, cost_matrix=None):
+    """
+    Implementiert einen Minimum-Fehler-Entscheider mit Kostenmatrix
+
+    Args:
+        channel_matrix (list): Kanalmatrix P(Y|X)
+        prior_probs (list): A-priori-Wahrscheinlichkeiten P(X)
+        cost_matrix (list): Kostenmatrix für Fehlentscheidungen, None für 0-1-Kosten
+
+    Returns:
+        list: Entscheidungstabelle (Index des Eingangssymbols mit minimalen erwarteten Kosten)
+    """
+    if not channel_matrix or not prior_probs:
+        return []
+
+    n_inputs = len(channel_matrix)
+    n_outputs = len(channel_matrix[0])
+
+    # Erstelle Standardkostenmatrix wenn keine angegeben
+    if cost_matrix is None:
+        cost_matrix = [[0 if i == i_hat else 1 for i_hat in range(n_inputs)] for i in range(n_inputs)]
+
+    decoder = []
+
+    # Berechne für jedes Ausgangssymbol
+    for j in range(n_outputs):
+        min_cost = float('inf')
+        min_index = -1
+
+        # Berechne erwartete Kosten für jede mögliche Entscheidung
+        for i_hat in range(n_inputs):
+            expected_cost = 0
+
+            # Für jedes tatsächliche Eingangssymbol
+            for i in range(n_inputs):
+                # P(X=i|Y=j) = P(Y=j|X=i) * P(X=i) / P(Y=j)
+                # Der Nenner ist konstant für alle i_hat, also ignorieren wir ihn
+                posterior_numerator = channel_matrix[i][j] * prior_probs[i]
+
+                # Erwartete Kosten: Summe über alle i von P(X=i|Y=j) * cost(i, i_hat)
+                expected_cost += posterior_numerator * cost_matrix[i][i_hat]
+
+            if expected_cost < min_cost:
+                min_cost = expected_cost
+                min_index = i_hat
+
+        decoder.append(min_index)
+
+    return decoder
+
+
+#####################
+# Wahrscheinlichkeitsberechnungen #
+#####################
+
+def conditional_probability(joint_prob, marginal_prob):
+    """
+    Berechnet bedingte Wahrscheinlichkeit P(A|B) aus P(A,B) und P(B)
+
+    Args:
+        joint_prob (float): Verbundwahrscheinlichkeit P(A,B)
+        marginal_prob (float): Randwahrscheinlichkeit P(B)
+
+    Returns:
+        float: Bedingte Wahrscheinlichkeit P(A|B)
+    """
+    if marginal_prob == 0:
+        return 0  # Undefiniert, aber wir geben 0 zurück
+
+    return joint_prob / marginal_prob
+
+
+def bayes_theorem(prior, likelihood, evidence):
+    """
+    Implementiert den Satz von Bayes: P(A|B) = P(B|A) * P(A) / P(B)
+
+    Args:
+        prior (float): A-priori-Wahrscheinlichkeit P(A)
+        likelihood (float): Likelihood P(B|A)
+        evidence (float): Evidenz P(B)
+
+    Returns:
+        float: A-posteriori-Wahrscheinlichkeit P(A|B)
+    """
+    if evidence == 0:
+        return 0  # Undefiniert, aber wir geben 0 zurück
+
+    return (likelihood * prior) / evidence
+
+
+def total_probability(priors, conditionals):
+    """
+    Berechnet Gesamtwahrscheinlichkeit: P(B) = Summe über alle i von P(B|A_i) * P(A_i)
+
+    Args:
+        priors (list): Liste der A-priori-Wahrscheinlichkeiten P(A_i)
+        conditionals (list): Liste der bedingten Wahrscheinlichkeiten P(B|A_i)
+
+    Returns:
+        float: Gesamtwahrscheinlichkeit P(B)
+    """
+    if len(priors) != len(conditionals):
+        raise ValueError("Priors und Conditionals müssen gleiche Länge haben")
+
+    return sum(p * c for p, c in zip(priors, conditionals))
+
+
+def bernoulli_probability(p, k, n):
+    """
+    Berechnet Bernoulli-Wahrscheinlichkeit P(X=k) für n Versuche mit Erfolgswahrscheinlichkeit p
+
+    Args:
+        p (float): Erfolgswahrscheinlichkeit
+        k (int): Anzahl der Erfolge
+        n (int): Anzahl der Versuche
+
+    Returns:
+        float: Wahrscheinlichkeit für genau k Erfolge in n Versuchen
+    """
+    if k < 0 or k > n:
+        return 0
+
+    # Berechne Binomialkoeffizient * p^k * (1-p)^(n-k)
+    from math import factorial
+
+    # Binomialkoeffizient
+    binom = factorial(n) / (factorial(k) * factorial(n - k))
+
+    return binom * (p ** k) * ((1 - p) ** (n - k))
+
+
+def binomial_cumulative(p, k, n):
+    """
+    Berechnet kumulative Binomialwahrscheinlichkeit P(X ≤ k) für n Versuche
+
+    Args:
+        p (float): Erfolgswahrscheinlichkeit
+        k (int): Schwellenwert für Erfolge
+        n (int): Anzahl der Versuche
+
+    Returns:
+        float: Wahrscheinlichkeit für höchstens k Erfolge in n Versuchen
+    """
+    return sum(bernoulli_probability(p, i, n) for i in range(k + 1))
+
+
+def channel_capacity(channel_matrix):
+    """
+    Berechnet näherungsweise die Kanalkapazität eines diskreten gedächtnislosen Kanals
+    Verwendung einer einfachen Methode zur Annäherung, nicht optimal für alle Kanäle
+
+    Args:
+        channel_matrix (list): Kanalmatrix P(Y|X)
+
+    Returns:
+        float: Ungefähre Kanalkapazität in Bits
+    """
+    import math
+
+    n_inputs = len(channel_matrix)
+    n_outputs = len(channel_matrix[0]) if channel_matrix else 0
+
+    # Einfache Annäherung: Gleichwahrscheinliche Eingänge
+    px = [1.0 / n_inputs] * n_inputs
+
+    # Berechne P(Y)
+    py = [0] * n_outputs
+    for j in range(n_outputs):
+        for i in range(n_inputs):
+            py[j] += px[i] * channel_matrix[i][j]
+
+    # Berechne gegenseitige Information I(X;Y) unter der Annahme gleichwahrscheinlicher Eingänge
+    mutual_info = 0
+    for i in range(n_inputs):
+        for j in range(n_outputs):
+            if channel_matrix[i][j] > 0:
+                term = channel_matrix[i][j] * math.log2(channel_matrix[i][j] / py[j])
+                mutual_info += px[i] * term
+
+    return mutual_info
+
+
+#####################
+# Kombinatorik #
+#####################
+
+def factorial(n):
+    """
+    Berechnet die Fakultät n!
+
+    Args:
+        n (int): Nicht-negative Ganzzahl
+
+    Returns:
+        int: n!
+    """
+    if n < 0:
+        raise ValueError("Fakultät nicht für negative Zahlen definiert")
+
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+
+    return result
+
+
+def permutation(n, k=None):
+    """
+    Berechnet Anzahl der Permutationen (Anordnungen)
+
+    Args:
+        n (int): Anzahl der Elemente
+        k (int, optional): Anzahl der zu wählenden Elemente, wenn None dann k=n
+
+    Returns:
+        int: P(n,k) = n! / (n-k)!
+    """
+    if k is None:
+        k = n
+
+    if k < 0 or k > n:
+        return 0
+
+    return factorial(n) // factorial(n - k)
+
+
+def permutation_with_repetition(n, counts):
+    """
+    Berechnet Anzahl der Permutationen mit Wiederholung
+
+    Args:
+        n (int): Gesamtanzahl der Elemente
+        counts (list): Liste mit Anzahl der Wiederholungen für jede Gruppe
+
+    Returns:
+        int: n! / (count_1! * count_2! * ... * count_k!)
+    """
+    if sum(counts) != n:
+        raise ValueError("Die Summe der Gruppenzahlen muss gleich n sein")
+
+    result = factorial(n)
+    for count in counts:
+        result //= factorial(count)
+
+    return result
+
+
+def combination(n, k):
+    """
+    Berechnet Anzahl der Kombinationen (Auswahl ohne Reihenfolge)
+
+    Args:
+        n (int): Anzahl der Elemente
+        k (int): Anzahl der zu wählenden Elemente
+
+    Returns:
+        int: C(n,k) = n! / (k! * (n-k)!)
+    """
+    if k < 0 or k > n:
+        return 0
+
+    # Optimiere die Berechnung für große Zahlen
+    if k > n - k:
+        k = n - k
+
+    result = 1
+    for i in range(1, k + 1):
+        result = result * (n - k + i) // i
+
+    return result
+
+
+def combination_with_repetition(n, k):
+    """
+    Berechnet Anzahl der Kombinationen mit Wiederholung
+
+    Args:
+        n (int): Anzahl der Elemente
+        k (int): Anzahl der zu wählenden Elemente (mit Wiederholung)
+
+    Returns:
+        int: C(n+k-1,k)
+    """
+    return combination(n + k - 1, k)
+
+
+def multinomial(n, counts):
+    """
+    Berechnet den Multinomialkoeffizienten
+
+    Args:
+        n (int): Gesamtanzahl der Elemente
+        counts (list): Liste mit Anzahl der Elemente für jede Kategorie
+
+    Returns:
+        int: n! / (count_1! * count_2! * ... * count_k!)
+    """
+    if sum(counts) != n:
+        raise ValueError("Die Summe der Kategorienzahlen muss gleich n sein")
+
+    result = factorial(n)
+    for count in counts:
+        result //= factorial(count)
+
+    return result
+
+
+def stirling_number_2nd_kind(n, k):
+    """
+    Berechnet Stirling-Zahlen zweiter Art (Anzahl der Partitionen)
+
+    Args:
+        n (int): Anzahl der Elemente
+        k (int): Anzahl der nicht-leeren Teilmengen
+
+    Returns:
+        int: Stirling-Zahl S(n,k)
+    """
+    if k == 1 or k == n:
+        return 1
+    if k == 0 or k > n:
+        return 0
+
+    # Rekursive Formel: S(n,k) = k*S(n-1,k) + S(n-1,k-1)
+    return k * stirling_number_2nd_kind(n - 1, k) + stirling_number_2nd_kind(n - 1, k - 1)
+
+
+def bell_number(n):
+    """
+    Berechnet die Bell-Zahl (Gesamtzahl der Partitionen einer n-elementigen Menge)
+
+    Args:
+        n (int): Anzahl der Elemente
+
+    Returns:
+        int: Die n-te Bell-Zahl
+    """
+    if n == 0:
+        return 1
+
+    # Summe der Stirling-Zahlen zweiter Art
+    return sum(stirling_number_2nd_kind(n, k) for k in range(1, n + 1))
+
+
+#####################
+# Neue Menüfunktionen #
+#####################
+
+def advanced_channel_menu():
+    global current_menu
+    current_menu = "advanced_channel"
+
+    while current_menu == "advanced_channel":
+        clear_screen()
+        print("==== Erweiterte Kanalmodelle ====")
+        print("1. Kanalmatrix erstellen")
+        print("2. Kanalsimulation")
+        print("3. MAP-Entscheider")
+        print("4. Minimum-Fehler-Entscheider")
+        print("5. Kanalkapazität berechnen")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Kanalmatrix erstellen
+            clear_screen()
+            print("==== Kanalmatrix erstellen ====")
+            try:
+                print("Wähle einen Kanaltyp:")
+                print("1. Vollständiger, nicht gestörter Kanal")
+                print("2. Vollständig gestörter Kanal")
+                print("3. Binärer symmetrischer Kanal (BSC)")
+                print("4. Benutzerdefiniert")
+
+                type_choice = input("\nWähle einen Typ: ")
+
+                channel_type = ""
+                if type_choice == "1":
+                    channel_type = "perfect"
+                elif type_choice == "2":
+                    channel_type = "fully_disturbed"
+                elif type_choice == "3":
+                    channel_type = "binary_symmetric"
+                elif type_choice == "4":
+                    channel_type = "custom"
+                else:
+                    raise ValueError("Ungültige Auswahl")
+
+                n_inputs = int(input("Anzahl der Eingangssymbole: "))
+
+                if channel_type != "binary_symmetric":
+                    n_outputs = int(input("Anzahl der Ausgangssymbole: "))
+                else:
+                    n_outputs = 2
+
+                error_prob = 0.1
+                if channel_type == "binary_symmetric":
+                    error_prob = float(input("Fehlerwahrscheinlichkeit (0-1): "))
+
+                matrix = create_channel_matrix(channel_type, error_prob, n_inputs, n_outputs)
+
+                print("\nErzeugte Kanalmatrix P(Y|X):")
+                for i, row in enumerate(matrix):
+                    print(f"x{i}: {' '.join(f'{p:.4f}' for p in row)}")
+
+                # Optional: Matrix in Variable speichern
+                save = input("\nMatrix speichern? (j/n): ")
+                if save.lower() == "j":
+                    global saved_channel_matrix
+                    saved_channel_matrix = matrix
+                    print("Matrix gespeichert!")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Kanalsimulation
+            clear_screen()
+            print("==== Kanalsimulation ====")
+            try:
+                # Prüfe, ob Matrix gespeichert ist
+                if 'saved_channel_matrix' in globals():
+                    use_saved = input("Gespeicherte Matrix verwenden? (j/n): ")
+                    if use_saved.lower() == "j":
+                        matrix = saved_channel_matrix
+                    else:
+                        raise ValueError("Bitte zuerst eine Matrix erstellen")
+                else:
+                    raise ValueError("Bitte zuerst eine Matrix erstellen")
+
+                # Eingabesymbole
+                input_str = input("Eingabesymbole (z.B. 0,1,0,1,0): ")
+                input_symbols = [int(s.strip()) for s in input_str.split(",")]
+
+                # Anzahl der Simulationen
+                iterations = int(input("Anzahl der Simulationen (Standard: 1000): ") or "1000")
+
+                # Simulation durchführen
+                results = channel_simulate(input_symbols, matrix, iterations)
+
+                print("\nSimulationsergebnisse:")
+                print(f"Fehlerrate: {results['error_rate']:.6f}")
+
+                print("\nAusgabewahrscheinlichkeiten P(Y):")
+                for j, p in enumerate(results['output_probs']):
+                    print(f"P(Y={j}) = {p:.6f}")
+
+                print("\nGemessene bedingte Wahrscheinlichkeiten P(Y|X):")
+                for i, row in enumerate(results['conditional_probs']):
+                    print(f"x{i}: {' '.join(f'{p:.4f}' for p in row)}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # MAP-Entscheider
+            clear_screen()
+            print("==== MAP-Entscheider ====")
+            try:
+                # Prüfe, ob Matrix gespeichert ist
+                if 'saved_channel_matrix' in globals():
+                    use_saved = input("Gespeicherte Matrix verwenden? (j/n): ")
+                    if use_saved.lower() == "j":
+                        matrix = saved_channel_matrix
+                    else:
+                        raise ValueError("Bitte zuerst eine Matrix erstellen")
+                else:
+                    raise ValueError("Bitte zuerst eine Matrix erstellen")
+
+                # A-priori-Wahrscheinlichkeiten
+                n_inputs = len(matrix)
+                prior_str = input(f"A-priori-Wahrscheinlichkeiten P(X) für {n_inputs} Symbole (z.B. 0.5,0.5): ")
+                prior_probs = [float(p.strip()) for p in prior_str.split(",")]
+
+                if len(prior_probs) != n_inputs:
+                    raise ValueError(f"Anzahl der Wahrscheinlichkeiten muss {n_inputs} sein")
+
+                # MAP-Entscheider berechnen
+                decoder = maximum_a_posteriori_decoder(matrix, prior_probs)
+
+                print("\nMAP-Entscheidungstabelle:")
+                for j, decision in enumerate(decoder):
+                    print(f"Wenn y{j} empfangen: Entscheide x{decision}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "4":
+            # Minimum-Fehler-Entscheider
+            clear_screen()
+            print("==== Minimum-Fehler-Entscheider ====")
+            try:
+                # Prüfe, ob Matrix gespeichert ist
+                if 'saved_channel_matrix' in globals():
+                    use_saved = input("Gespeicherte Matrix verwenden? (j/n): ")
+                    if use_saved.lower() == "j":
+                        matrix = saved_channel_matrix
+                    else:
+                        raise ValueError("Bitte zuerst eine Matrix erstellen")
+                else:
+                    raise ValueError("Bitte zuerst eine Matrix erstellen")
+
+                # A-priori-Wahrscheinlichkeiten
+                n_inputs = len(matrix)
+                prior_str = input(f"A-priori-Wahrscheinlichkeiten P(X) für {n_inputs} Symbole (z.B. 0.5,0.5): ")
+                prior_probs = [float(p.strip()) for p in prior_str.split(",")]
+
+                if len(prior_probs) != n_inputs:
+                    raise ValueError(f"Anzahl der Wahrscheinlichkeiten muss {n_inputs} sein")
+
+                # Kostenmatrix
+                use_cost = input("Kostenmatrix verwenden? (j/n, Standard: 0-1-Kosten): ")
+                cost_matrix = None
+
+                if use_cost.lower() == "j":
+                    cost_matrix = []
+                    print(f"\nKostenmatrix C[i][i_hat] eingeben ({n_inputs}x{n_inputs}):")
+                    for i in range(n_inputs):
+                        cost_row = []
+                        row_str = input(f"Zeile {i} (z.B. 0,1,2,...): ")
+                        cost_row = [float(c.strip()) for c in row_str.split(",")]
+
+                        if len(cost_row) != n_inputs:
+                            raise ValueError(f"Zeile muss {n_inputs} Werte enthalten")
+
+                        cost_matrix.append(cost_row)
+
+                # Entscheider berechnen
+                decoder = minimum_error_decoder(matrix, prior_probs, cost_matrix)
+
+                print("\nMinimum-Fehler-Entscheidungstabelle:")
+                for j, decision in enumerate(decoder):
+                    print(f"Wenn y{j} empfangen: Entscheide x{decision}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "5":
+            # Kanalkapazität berechnen
+            clear_screen()
+            print("==== Kanalkapazität berechnen ====")
+            try:
+                # Prüfe, ob Matrix gespeichert ist
+                if 'saved_channel_matrix' in globals():
+                    use_saved = input("Gespeicherte Matrix verwenden? (j/n): ")
+                    if use_saved.lower() == "j":
+                        matrix = saved_channel_matrix
+                    else:
+                        raise ValueError("Bitte zuerst eine Matrix erstellen")
+                else:
+                    raise ValueError("Bitte zuerst eine Matrix erstellen")
+
+                # Kanalkapazität berechnen
+                capacity = channel_capacity(matrix)
+
+                print(f"\nKanalkapazität: {capacity:.6f} bits pro Übertragung")
+                print("\nHinweis: Dies ist eine Approximation der Kanalkapazität basierend")
+                print("auf gleichwahrscheinlichen Eingangssymbolen und könnte nicht optimal sein.")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
+def probability_menu():
+    global current_menu
+    current_menu = "probability"
+
+    while current_menu == "probability":
+        clear_screen()
+        print("==== Wahrscheinlichkeitsberechnungen ====")
+        print("1. Bedingte Wahrscheinlichkeit")
+        print("2. Satz von Bayes")
+        print("3. Gesamtwahrscheinlichkeit")
+        print("4. Bernoulli-Wahrscheinlichkeit")
+        print("5. Binomialwahrscheinlichkeit (kumulativ)")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Bedingte Wahrscheinlichkeit
+            clear_screen()
+            print("==== Bedingte Wahrscheinlichkeit ====")
+            try:
+                joint_prob = float(input("Verbundwahrscheinlichkeit P(A,B): "))
+                marginal_prob = float(input("Randwahrscheinlichkeit P(B): "))
+
+                result = conditional_probability(joint_prob, marginal_prob)
+                print(f"\nBedingte Wahrscheinlichkeit P(A|B) = {result:.6f}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Satz von Bayes
+            clear_screen()
+            print("==== Satz von Bayes ====")
+            try:
+                prior = float(input("A-priori-Wahrscheinlichkeit P(A): "))
+                likelihood = float(input("Likelihood P(B|A): "))
+                evidence = float(input("Evidenz P(B): "))
+
+                result = bayes_theorem(prior, likelihood, evidence)
+                print(f"\nA-posteriori-Wahrscheinlichkeit P(A|B) = {result:.6f}")
+                print(f"Formel: P(A|B) = P(B|A) * P(A) / P(B) = {likelihood} * {prior} / {evidence}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # Gesamtwahrscheinlichkeit
+            clear_screen()
+            print("==== Gesamtwahrscheinlichkeit ====")
+            try:
+                n = int(input("Anzahl der disjunkten Ereignisse: "))
+
+                priors = []
+                conditionals = []
+
+                print("\nGib die Wahrscheinlichkeiten ein:")
+                for i in range(n):
+                    p = float(input(f"P(A{i + 1}): "))
+                    c = float(input(f"P(B|A{i + 1}): "))
+                    priors.append(p)
+                    conditionals.append(c)
+
+                result = total_probability(priors, conditionals)
+
+                print(f"\nGesamtwahrscheinlichkeit P(B) = {result:.6f}")
+                print("Formel: P(B) = Σ P(B|Ai) * P(Ai)")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "4":
+            # Bernoulli-Wahrscheinlichkeit
+            clear_screen()
+            print("==== Bernoulli-Wahrscheinlichkeit ====")
+            try:
+                p = float(input("Erfolgswahrscheinlichkeit p: "))
+                n = int(input("Anzahl der Versuche n: "))
+                k = int(input("Anzahl der Erfolge k: "))
+
+                if p < 0 or p > 1:
+                    raise ValueError("p muss zwischen 0 und 1 liegen")
+
+                result = bernoulli_probability(p, k, n)
+                print(f"\nP(X = {k}) = {result:.6f}")
+                print(f"Formel: P(X = {k}) = C({n},{k}) * {p}^{k} * (1-{p})^{n - k}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "5":
+            # Binomialwahrscheinlichkeit (kumulativ)
+            clear_screen()
+            print("==== Kumulative Binomialwahrscheinlichkeit ====")
+            try:
+                p = float(input("Erfolgswahrscheinlichkeit p: "))
+                n = int(input("Anzahl der Versuche n: "))
+                k = int(input("Höchstens k Erfolge: "))
+
+                if p < 0 or p > 1:
+                    raise ValueError("p muss zwischen 0 und 1 liegen")
+
+                result = binomial_cumulative(p, k, n)
+                print(f"\nP(X ≤ {k}) = {result:.6f}")
+                print(f"Formel: P(X ≤ {k}) = Σ P(X = i) für i von 0 bis {k}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
+def combinatorics_menu():
+    global current_menu
+    current_menu = "combinatorics"
+
+    while current_menu == "combinatorics":
+        clear_screen()
+        print("==== Kombinatorik ====")
+        print("1. Permutation (ohne Wiederholung)")
+        print("2. Permutation mit Wiederholung")
+        print("3. Kombination (ohne Wiederholung)")
+        print("4. Kombination mit Wiederholung")
+        print("5. Multinomialkoeffizient")
+        print("6. Stirling-Zahl zweiter Art")
+        print("7. Bell-Zahl")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Permutation
+            clear_screen()
+            print("==== Permutation ====")
+            try:
+                n = int(input("Anzahl der Elemente n: "))
+                k_input = input("Anzahl der zu wählenden Elemente k (leer für k=n): ")
+
+                if k_input:
+                    k = int(k_input)
+                    result = permutation(n, k)
+                    print(f"\nP({n},{k}) = {result}")
+                    print(f"Formel: P({n},{k}) = {n}! / ({n}-{k})!")
+                else:
+                    result = permutation(n)
+                    print(f"\n{n}! = {result}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Permutation mit Wiederholung
+            clear_screen()
+            print("==== Permutation mit Wiederholung ====")
+            try:
+                n = int(input("Gesamtanzahl der Elemente n: "))
+
+                print("\nAnzahl der Wiederholungen für jede Gruppe (Summe muss n sein):")
+                counts_str = input("z.B. für MISSISSIPPI: 1,4,4,2 (M,I,S,P): ")
+                counts = [int(c.strip()) for c in counts_str.split(",")]
+
+                result = permutation_with_repetition(n, counts)
+
+                print(f"\nAnzahl der Permutationen: {result}")
+                formula = f"{n}! / ({counts[0]}!"
+                for count in counts[1:]:
+                    formula += f" * {count}!"
+                formula += ")"
+                print(f"Formel: {formula}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # Kombination
+            clear_screen()
+            print("==== Kombination ====")
+            try:
+                n = int(input("Anzahl der Elemente n: "))
+                k = int(input("Anzahl der zu wählenden Elemente k: "))
+
+                result = combination(n, k)
+
+                print(f"\nC({n},{k}) = {result}")
+                print(f"Formel: C({n},{k}) = {n}! / ({k}! * ({n}-{k})!)")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "4":
+            # Kombination mit Wiederholung
+            clear_screen()
+            print("==== Kombination mit Wiederholung ====")
+            try:
+                n = int(input("Anzahl der Elemente n: "))
+                k = int(input("Anzahl der zu wählenden Elemente k: "))
+
+                result = combination_with_repetition(n, k)
+
+                print(f"\nC'({n},{k}) = {result}")
+                print(f"Formel: C'({n},{k}) = C({n}+{k}-1,{k}) = ({n}+{k}-1)! / ({k}! * ({n}-1)!)")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "5":
+            # Multinomialkoeffizient
+            clear_screen()
+            print("==== Multinomialkoeffizient ====")
+            try:
+                n = int(input("Gesamtanzahl der Elemente n: "))
+
+                print("\nAnzahl der Elemente für jede Kategorie (Summe muss n sein):")
+                counts_str = input("z.B. für Verteilung auf 3 Kategorien: 3,2,2: ")
+                counts = [int(c.strip()) for c in counts_str.split(",")]
+
+                result = multinomial(n, counts)
+
+                print(f"\nMultinomialkoeffizient: {result}")
+                formula = f"{n}! / ({counts[0]}!"
+                for count in counts[1:]:
+                    formula += f" * {count}!"
+                formula += ")"
+                print(f"Formel: {formula}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "6":
+            # Stirling-Zahl zweiter Art
+            clear_screen()
+            print("==== Stirling-Zahl zweiter Art ====")
+            print("Hinweis: Für n > 10 kann die Berechnung länger dauern.")
+            try:
+                n = int(input("Anzahl der Elemente n: "))
+                k = int(input("Anzahl der nicht-leeren Teilmengen k: "))
+
+                if n > 10:
+                    confirm = input("Berechnung kann für n > 10 lange dauern. Fortfahren? (j/n): ")
+                    if confirm.lower() != "j":
+                        raise ValueError("Berechnung abgebrochen")
+
+                result = stirling_number_2nd_kind(n, k)
+
+                print(f"\nStirling-Zahl S({n},{k}) = {result}")
+                print("Formel: S(n,k) = k*S(n-1,k) + S(n-1,k-1)")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "7":
+            # Bell-Zahl
+            clear_screen()
+            print("==== Bell-Zahl ====")
+            print("Hinweis: Für n > 10 kann die Berechnung länger dauern.")
+            try:
+                n = int(input("Anzahl der Elemente n: "))
+
+                if n > 10:
+                    confirm = input("Berechnung kann für n > 10 lange dauern. Fortfahren? (j/n): ")
+                    if confirm.lower() != "j":
+                        raise ValueError("Berechnung abgebrochen")
+
+                result = bell_number(n)
+
+                print(f"\nBell-Zahl B({n}) = {result}")
+                print("Formel: B(n) = Σ S(n,k) für k von 1 bis n")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
+
+
 def main_menu():
     global current_menu
     current_menu = "main"
@@ -2349,9 +3351,12 @@ def main_menu():
         print("5. Kanalmodell")
         print("6. Binärzahlen und Darstellung")
         print("7. Zyklische Codes")
-        print("8. Markov-Quellen und Gedächtnis")  # Neue Option
-        print("9. Blockcode-Eigenschaften")       # Neue Option
-        print("10. Polynomprüfung")               # Neue Option
+        print("8. Markov-Quellen und Gedächtnis")
+        print("9. Blockcode-Eigenschaften")
+        print("10. Polynomprüfung")
+        print("11. Erweiterte Kanalmodelle")  # Neue Option
+        print("12. Wahrscheinlichkeitsberechnungen")  # Neue Option
+        print("13. Kombinatorik")  # Neue Option
         print("0. Beenden")
 
         choice = input("\nWähle eine Option: ")
@@ -2371,17 +3376,23 @@ def main_menu():
         elif choice == "7":
             zyklischer_code_menu()
         elif choice == "8":
-            markov_menu()  # Neues Menü
+            markov_menu()
         elif choice == "9":
-            blockcode_menu()  # Neues Menü
+            blockcode_menu()
         elif choice == "10":
-            polynomial_menu()  # Neues Menü
+            polynomial_menu()
+        elif choice == "11":
+            advanced_channel_menu()  # Neues Menü
+        elif choice == "12":
+            probability_menu()  # Neues Menü
+        elif choice == "13":
+            combinatorics_menu()  # Neues Menü
         elif choice == "0":
             print("Beenden des Programms...")
             break
         else:
             print("Ungültige Eingabe!")
-            pause()
-# Starte das Programm
+            pause()# Starte das Programm
+
 if __name__ == "__main__":
     main_menu()

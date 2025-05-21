@@ -2,6 +2,7 @@ import tools_entropy_compression
 import tools_rsa
 import tool_base
 import tools_channel_coding
+import tools_convolutional_code
 
 
 TOOLS = [
@@ -28,8 +29,8 @@ TOOLS = [
     ]),
     
     tool_base.ToolGroup(4, "Faltungscode", [
-        tool_base.ToolEntry(1, "Faltungskodierung", lambda: tool_base.PlaceholderTool("Faltungskodierung")),
-        tool_base.ToolEntry(2, "Viterbi-Dekodierung", lambda: tool_base.PlaceholderTool("Viterbi-Dekodierung")),
+        tool_base.ToolEntry(1, "Faltungskodierung", tools_convolutional_code.ConvolutionalEncodeTool),
+        tool_base.ToolEntry(2, "Viterbi-Dekodierung", tools_convolutional_code.ViterbiDecodeTool),
     ]),
     
     tool_base.ToolGroup(5, "Kanalmodell", [

@@ -23,7 +23,7 @@ class HammingDistanceTool(Tool):
                 print("Fehler: Beide Strings müssen binär sein (nur 0 und 1 enthalten)")
             else:
                 distance = self.hamming_distance(str1, str2)
-                print(f"\nDie Hamming-Distanz beträgt: {distance}")
+                print("\nDie Hamming-Distanz beträgt: {}".format(distance))
         except Exception as e:
             print("Fehler:", str(e))
 
@@ -138,7 +138,7 @@ class CRCCheckTool(Tool):
                 return
 
             if len(crc) != len(poly) - 1:
-                print(f"Warnung: Die CRC-Prüfsumme sollte {len(poly) - 1} Bits lang sein")
+                print("Warnung: Die CRC-Prüfsumme sollte {} Bits lang sein".format(len(poly) - 1))
 
             result = self.crc_check(message, poly, crc)
 
@@ -198,8 +198,8 @@ class CRCCalculationTool(Tool):
 
             crc = self.calculate_crc(message, poly)
 
-            print(f"\nCRC-Prüfsumme: {crc}")
-            print(f"Vollständiger kodierter Bitstrom: {message + crc}")
+            print("\nCRC-Prüfsumme: {}".format(crc))
+            print("Vollständiger kodierter Bitstrom: {}".format(message + crc))
 
             # Zeige die polynom-Notation
             degree = len(poly) - 1
@@ -212,10 +212,10 @@ class CRCCalculationTool(Tool):
                     elif power == 1:
                         poly_terms.append("x")
                     else:
-                        poly_terms.append(f"x^{power}")
+                        poly_terms.append("x^{}".format(power))
 
             poly_notation = " + ".join(poly_terms)
-            print(f"Generator-Polynom: {poly_notation}")
+            print("Generator-Polynom: {}".format(poly_notation))
 
         except Exception as e:
             print("Fehler:", str(e))

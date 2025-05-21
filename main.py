@@ -3,6 +3,7 @@ import tools_rsa
 import tool_base
 import tools_channel_coding
 import tools_convolutional_code
+import channel_model
 
 
 TOOLS = [
@@ -34,8 +35,8 @@ TOOLS = [
     ]),
     
     tool_base.ToolGroup(5, "Kanalmodell", [
-        tool_base.ToolEntry(1, "Transinformation", lambda: tool_base.PlaceholderTool("Transinformation")),
-        tool_base.ToolEntry(2, "Maximum-Likelihood", lambda: tool_base.PlaceholderTool("Maximum-Likelihood")),
+        tool_base.ToolEntry(1, "Transinformation", channel_model.TransinformationTool),
+        tool_base.ToolEntry(2, "Maximum-Likelihood", channel_model.MaximumLikelihoodTool),
     ]),
     
     tool_base.ToolGroup(6, "Binärumrechnung", [
@@ -46,61 +47,3 @@ TOOLS = [
         tool_base.ToolEntry(5, "IEEE-754 analysieren", lambda: tool_base.PlaceholderTool("IEEE-754 analysieren")),
     ]),
 ]
-
-def find_tool_by_path(path: list, tools: list):
-    current_tools = tools
-    current = None
-    for p in path:
-        try:
-            current = next((t for t in current_tools if t.nr == p))
-        except StopIteration:
-            current = None
-        if current is None:
-            return None
-        if isinstance(current, tool_base.ToolGroup):
-            current_tools = current.tools
-    return current
-
-
-def select_tool(tools) -> None:
-    path = []
-
-    while True:
-        node = find_tool_by_path(path, tools) if path else None
-        current_tools = tools if not path else node.tools if isinstance(node, tool_base.ToolGroup) else []
-
-        print()
-        print("# Hauptmenü" if not path else "# {} {}".format(".".join(map(str, path)), node.name if node else ''))
-        for t in current_tools:
-            print("{} {}".format(t.nr, t.name))
-
-        input_str = input("Nr: ").strip()
-
-        if input_str == "":
-            if path:
-                path.pop()  # Go up one level
-                continue
-            else:
-                return  # Exit menu
-
-        try:
-            parts = list(map(int, input_str.split(".")))
-            full_path = parts if "." in input_str else path + parts
-
-            result = find_tool_by_path(full_path, tools)
-            if isinstance(result, tool_base.ToolEntry):
-                print()
-                instance = result.cls()
-                instance.run()
-            elif isinstance(result, tool_base.ToolGroup):
-                path = full_path
-            else:
-                print("Ungültige Eingabe.")
-        except ValueError:
-            print("Bitte eine gültige Nummer oder Pfad eingeben (z.B. 1 oder 1.2).")
-
-
-def main():
-    select_tool(TOOLS)
-
-main()

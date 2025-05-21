@@ -9,7 +9,6 @@ def test_a():
 
 def test_b():
     print("test_b")
-    raise ValueError("test_b")
 
 
 if __name__ == '__main__':

@@ -111,6 +111,95 @@ class HuffmanTool(Tool):
         print("\nDrücke Enter, um fortzufahren...")
         input()
 
+class RLETool(Tool):
+    def run_length_encode(self, data):
+        """Führt eine Lauflängenkodierung der Eingabedaten durch"""
+        if not data:
+            return []
+            
+        encoded = []
+        count = 1
+        current = data[0]
+        
+        for i in range(1, len(data)):
+            if data[i] == current:
+                count += 1
+            else:
+                encoded.append((current, count))
+                current = data[i]
+                count = 1
+                
+        # Füge das letzte Element hinzu
+        encoded.append((current, count))
+        return encoded
+        
+    def run_length_decode(self, encoded_data):
+        """Dekodiert eine lauflängenkodierte Sequenz"""
+        decoded = []
+        for symbol, count in encoded_data:
+            decoded.extend([symbol] * count)
+        return decoded
+
+    def run(self) -> None:
+        print("==== Lauflängenkodierung (RLE) ====")
+        try:
+            inp_type = input("Eingabetyp (text/binär): ").strip().lower()
+            
+            if inp_type == "text":
+                inp_data = input("Geben Sie den zu kodierenden Text ein: ")
+                original_data = list(inp_data)
+            elif inp_type == "binär" or inp_type == "binär":
+                inp_data = input("Geben Sie die Binärsequenz ein (nur 0 und 1): ")
+                if not all(bit in "01" for bit in inp_data):
+                    raise ValueError("Binärsequenz darf nur 0 und 1 enthalten")
+                original_data = list(inp_data)
+            else:
+                raise ValueError("Ungültiger Eingabetyp. Bitte 'text' oder 'binär' eingeben.")
+            
+            encoded = self.run_length_encode(original_data)
+            
+            print("\nEingabe:")
+            print("".join(original_data))
+            
+            print("\nLauflängenkodiert:")
+            if inp_type == "text":
+                for symbol, count in encoded:
+                    print("{}:{}".format(symbol, count), end=" ")
+            else:
+                for symbol, count in encoded:
+                    print("{}×{}".format(symbol, count), end=" ")
+            
+            # Berechne Kompressionsrate
+            original_size = len(original_data)
+            # Bei binärer Eingabe müssen wir abschätzen, wie viele Bits pro Paar benötigt werden
+            if inp_type == "binär" or inp_type == "binär":
+                # Ein Bit für das Symbol und log2(max_count) Bits für die Anzahl
+                max_count = max(count for _, count in encoded)
+                bits_for_count = max(1, math.ceil(math.log2(max_count)))
+                encoded_size = len(encoded) * (1 + bits_for_count)
+            else:
+                # Grobe Abschätzung: 8 Bits pro Zeichen + Bits für die Anzahl
+                encoded_size = sum(8 + math.ceil(math.log2(max(1, count))) for _, count in encoded)
+            
+            compression_ratio = original_size / encoded_size if encoded_size > 0 else float('inf')
+            
+            print("\n\nKompressionsrate: {:.2f}".format(compression_ratio))
+            print("Original: {} Einheiten".format(original_size))
+            print("Kodiert: ~ {} Einheiten".format(encoded_size))
+            
+            # Dekodiere zur Überprüfung
+            decoded = self.run_length_decode(encoded)
+            if decoded == original_data:
+                print("\nÜberprüfung: Die Dekodierung stimmt mit der Originaleingabe überein.")
+            else:
+                print("\nWarnung: Die Dekodierung stimmt nicht mit der Originaleingabe überein!")
+            
+        except Exception as e:
+            print("Fehler: {}".format(str(e)))
+            
+        print("\nDrücke Enter, um fortzufahren...")
+        input()
+
 class PlaceholderTool(Tool):
     def __init__(self, name):
         self.name = name
@@ -141,7 +230,7 @@ TOOLS = [
         ToolEntry(1, "Entropie berechnen", EntropyTool),
         ToolEntry(2, "Redundanz berechnen", RedundanzTool),
         ToolEntry(3, "Huffman-Code erstellen", HuffmanTool),
-        ToolEntry(4, "Lauflängenkodierung (RLE)", lambda: PlaceholderTool("Lauflängenkodierung (RLE)")),
+        ToolEntry(4, "Lauflängenkodierung (RLE)", RLETool),
         ToolEntry(5, "Lempel-Ziv LZ78", lambda: PlaceholderTool("Lempel-Ziv LZ78")),
         ToolEntry(6, "Lempel-Ziv LZ77", lambda: PlaceholderTool("Lempel-Ziv LZ77")),
     ]),

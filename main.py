@@ -200,6 +200,230 @@ class RLETool(Tool):
         print("\nDrücke Enter, um fortzufahren...")
         input()
 
+class LZ78Tool(Tool):
+    def lz78_encode(self, data):
+        """Implementiert LZ78-Kompression für eine Zeichenfolge"""
+        dictionary = {"": 0}  # Leerer String hat Index 0
+        result = []
+        w = ""
+        
+        for c in data:
+            wc = w + c
+            if wc in dictionary:
+                w = wc
+            else:
+                # Ausgabe: (Index von w, nächstes Zeichen c)
+                result.append((dictionary[w], c))
+                # Füge wc zum Dictionary hinzu
+                dictionary[wc] = len(dictionary)
+                w = ""
+                
+        # Füge verbleibende Zeichen hinzu, falls vorhanden
+        if w:
+            result.append((dictionary[w], ""))
+            
+        return result, dictionary
+    
+    def lz78_decode(self, encoded_data, dictionary_size):
+        """Dekodiert LZ78-komprimierte Daten"""
+        # Erstelle ein inverses Dictionary mit Indizes als Schlüssel
+        dictionary = {0: ""}
+        result = []
+        
+        for index, char in encoded_data:
+            if index in dictionary:
+                w = dictionary[index]
+                if char:  # Falls char nicht leer ist
+                    word = w + char
+                else:
+                    word = w
+                result.append(word)
+                dictionary[len(dictionary)] = word
+            else:
+                # Dieser Fall sollte theoretisch nicht eintreten
+                print("Warnung: Ungültiger Index {} im kodierten Datenstrom.".format(index))
+                
+        return "".join(result)
+
+    def run(self) -> None:
+        print("==== Lempel-Ziv LZ78 ====")
+        try:
+            input_text = input("Geben Sie den zu komprimierenden Text ein: ")
+            
+            # Kodieren
+            encoded_data, dictionary = self.lz78_encode(input_text)
+            
+            # Ausgabe des Kodierungsergebnisses
+            print("\nEingabetext: {}".format(input_text))
+            print("\nKodiertes Ergebnis:")
+            for index, char in encoded_data:
+                print("({}, '{}')".format(index, char), end=" ")
+            
+            # Dictionary-Größe und Kompressionsrate berechnen
+            original_size = len(input_text) * 8  # Annahme: 8 Bits pro Zeichen
+            
+            # Berechne die ungefähre Größe des kodierten Ergebnisses in Bits
+            max_index = max(index for index, _ in encoded_data) if encoded_data else 0
+            bits_for_index = max(1, math.ceil(math.log2(max_index + 1))) if max_index > 0 else 1
+            
+            # 8 Bits für jeden Zeichencode + bits_for_index für den Index
+            encoded_size = sum(bits_for_index + (8 if char else 0) for _, char in encoded_data)
+            
+            print("\n\nDictionary-Größe: {} Einträge".format(len(dictionary)))
+            print("Original: ~{} Bits (8 Bits pro Zeichen)".format(original_size))
+            print("Kodiert: ~{} Bits".format(encoded_size))
+            
+            compression_ratio = original_size / encoded_size if encoded_size > 0 else float('inf')
+            print("Kompressionsrate: {:.2f}".format(compression_ratio))
+            
+            # Dekodieren zur Überprüfung
+            decoded_text = self.lz78_decode(encoded_data, len(dictionary))
+            
+            if decoded_text == input_text:
+                print("\nÜberprüfung: Die Dekodierung stimmt mit der Originaleingabe überein.")
+            else:
+                print("\nWarnung: Die Dekodierung stimmt nicht mit der Originaleingabe überein!")
+                print("Dekodiert: {}".format(decoded_text))
+            
+        except Exception as e:
+            print("Fehler: {}".format(str(e)))
+            
+        print("\nDrücke Enter, um fortzufahren...")
+        input()
+
+class LZ77Tool(Tool):
+    def find_longest_match(self, data, cursor, window_size, lookahead_size):
+        """Findet die längste Übereinstimmung im Suchfenster"""
+        end_of_buffer = min(cursor + lookahead_size, len(data))
+        
+        # Falls wir am Ende der Daten angekommen sind
+        if cursor >= len(data):
+            return 0, 0, ""
+            
+        # Berechne die Suche im Fenster
+        search_start = max(0, cursor - window_size)
+        search_window = data[search_start:cursor]
+        lookahead = data[cursor:end_of_buffer]
+        
+        match_length = 0
+        match_offset = 0
+        next_char = ""
+        
+        # Länge 0, wenn keine Übereinstimmung gefunden
+        if not lookahead:
+            return match_offset, match_length, next_char
+            
+        # Der Fall, wenn keine Übereinstimmung gefunden wird
+        next_char = lookahead[0]
+        
+        # Suche nach Übereinstimmungen
+        for i in range(len(search_window), 0, -1):
+            pattern = search_window[i-1:]
+            length = 0
+            
+            # Finde die längste Übereinstimmung
+            for j in range(min(len(pattern), len(lookahead))):
+                if pattern[j] != lookahead[j]:
+                    break
+                length += 1
+                
+            # Wenn wir eine längere Übereinstimmung gefunden haben
+            if length > match_length:
+                match_length = length
+                match_offset = len(search_window) - i + 1
+        
+        # Nur wenn wir mindestens ein Zeichen kodieren
+        if match_length > 0:
+            if cursor + match_length < len(data):
+                next_char = data[cursor + match_length]
+            else:
+                next_char = ""
+            
+        return match_offset, match_length, next_char
+    
+    def lz77_encode(self, data, window_size=10, lookahead_size=5):
+        """Implementiert LZ77-Kompression"""
+        result = []
+        cursor = 0
+        
+        while cursor < len(data):
+            offset, length, next_char = self.find_longest_match(data, cursor, window_size, lookahead_size)
+            result.append((offset, length, next_char))
+            cursor += length + 1  # +1 wegen des zusätzlichen Zeichens
+            
+        return result
+    
+    def lz77_decode(self, encoded_data):
+        """Dekodiert LZ77-komprimierte Daten"""
+        result = []
+        
+        for offset, length, next_char in encoded_data:
+            # Hole bereits dekodierte Zeichen aus dem "Fenster"
+            if offset > 0 and length > 0:
+                start = len(result) - offset
+                for i in range(length):
+                    if start + i >= 0 and start + i < len(result):
+                        result.append(result[start + i])
+                    else:
+                        # This handles repetitions that exceed the available window
+                        # For example, when we need to repeat 'A' 3 times but only have
+                        # one 'A' in the window, we keep appending 'A' as we decode
+                        if result:
+                            result.append(result[-1])
+            
+            # Füge das nächste Zeichen hinzu, wenn es existiert
+            if next_char:
+                result.append(next_char)
+                
+        return "".join(result)
+
+    def run(self) -> None:
+        print("==== Lempel-Ziv LZ77 ====")
+        try:
+            input_text = input("Geben Sie den zu komprimierenden Text ein: ")
+            window_size = int(input("Fenstergröße (Standard: 10): ") or "10")
+            lookahead_size = int(input("Vorschaugröße (Standard: 5): ") or "5")
+            
+            # Kodieren
+            encoded_data = self.lz77_encode(input_text, window_size, lookahead_size)
+            
+            # Ausgabe des Kodierungsergebnisses
+            print("\nEingabetext: {}".format(input_text))
+            print("\nKodiertes Ergebnis (Offset, Länge, Nächstes Zeichen):")
+            for offset, length, next_char in encoded_data:
+                print("({}, {}, '{}')".format(offset, length, next_char), end=" ")
+            
+            # Berechne Kompressionsrate
+            original_size = len(input_text) * 8  # Annahme: 8 Bits pro Zeichen
+            
+            # Berechne die ungefähre Größe des kodierten Ergebnisses in Bits
+            bits_for_offset = math.ceil(math.log2(window_size + 1)) if window_size > 0 else 1
+            bits_for_length = math.ceil(math.log2(lookahead_size + 1)) if lookahead_size > 0 else 1
+            
+            # bits_for_offset + bits_for_length + 8 Bits für das nächste Zeichen
+            encoded_size = sum(bits_for_offset + bits_for_length + (8 if char else 0) for _, _, char in encoded_data)
+            
+            print("\n\nOriginal: ~{} Bits (8 Bits pro Zeichen)".format(original_size))
+            print("Kodiert: ~{} Bits".format(encoded_size))
+            
+            compression_ratio = original_size / encoded_size if encoded_size > 0 else float('inf')
+            print("Kompressionsrate: {:.2f}".format(compression_ratio))
+            
+            # Dekodieren zur Überprüfung
+            decoded_text = self.lz77_decode(encoded_data)
+            
+            if decoded_text == input_text:
+                print("\nÜberprüfung: Die Dekodierung stimmt mit der Originaleingabe überein.")
+            else:
+                print("\nWarnung: Die Dekodierung stimmt nicht mit der Originaleingabe überein!")
+                print("Dekodiert: {}".format(decoded_text))
+            
+        except Exception as e:
+            print("Fehler: {}".format(str(e)))
+            
+        print("\nDrücke Enter, um fortzufahren...")
+        input()
+
 class PlaceholderTool(Tool):
     def __init__(self, name):
         self.name = name
@@ -231,8 +455,8 @@ TOOLS = [
         ToolEntry(2, "Redundanz berechnen", RedundanzTool),
         ToolEntry(3, "Huffman-Code erstellen", HuffmanTool),
         ToolEntry(4, "Lauflängenkodierung (RLE)", RLETool),
-        ToolEntry(5, "Lempel-Ziv LZ78", lambda: PlaceholderTool("Lempel-Ziv LZ78")),
-        ToolEntry(6, "Lempel-Ziv LZ77", lambda: PlaceholderTool("Lempel-Ziv LZ77")),
+        ToolEntry(5, "Lempel-Ziv LZ78", LZ78Tool),
+        ToolEntry(6, "Lempel-Ziv LZ77", LZ77Tool),
     ]),
     
     # Rest of the TOOLS list remains unchanged

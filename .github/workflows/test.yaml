@@ -44,7 +44,7 @@ jobs:
         cd micropython
         git submodule update --init
         cd ports/unix
-        CC="gcc-10" make
+        CFLAGS="-Wno-error" make
         echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython

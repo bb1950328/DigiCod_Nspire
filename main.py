@@ -1,9 +1,10 @@
 import math
 
+
 class Tool(object):
     # abstract
     def run(self) -> None:
-        raise NotImplementedError(f"{self.__class__.__name__} must implement run()")
+        raise NotImplementedError("{} must implement run()".format(self.__class__.__name__))
 
 class EntropyTool(Tool):
     def run(self) -> None:
@@ -12,13 +13,13 @@ class EntropyTool(Tool):
             n = int(input("Anzahl der Symbole: "))
             probs = []
             for i in range(n):
-                p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
+                p = float(input("Wahrscheinlichkeit für Symbol {}: ".format(i + 1)))
                 probs.append(p)
 
             result = -sum(p * math.log2(p) for p in probs if p > 0)
-            print(f"\nEntropie: {result:.6f} bits/Symbol")
+            print("\nEntropie: {:.6f} bits/Symbol".format(result))
         except Exception as e:
-            print(f"Fehler: {str(e)}")
+            print("Fehler: {}".format(str(e)))
             
         print("\nDrücke Enter, um fortzufahren...")
         input()
@@ -28,8 +29,8 @@ class PlaceholderTool(Tool):
         self.name = name
 
     def run(self) -> None:
-        print(f"==== {self.name} ====")
-        print(f"Functionality for {self.name} not yet implemented")
+        print("==== {} ====".format(self.name))
+        print("Functionality for {} not yet implemented".format(self.name))
         print("\nDrücke Enter, um fortzufahren...")
         input()
 
@@ -39,7 +40,7 @@ class ToolNode(object):
         self.name = name
 
 class ToolGroup(ToolNode):
-    def __init__(self, nr: int, name: str, tools: list[ToolNode]) -> None:
+    def __init__(self, nr: int, name: str, tools: list) -> None:
         super().__init__(nr, name)
         self.tools = tools
 
@@ -90,11 +91,14 @@ TOOLS = [
     ]),
 ]
 
-def find_tool_by_path(path: list[int], tools: list[ToolNode]) -> ToolEntry | ToolGroup | None:
+def find_tool_by_path(path: list, tools: list):
     current_tools = tools
     current = None
     for p in path:
-        current = next((t for t in current_tools if t.nr == p), None)
+        try:
+            current = next((t for t in current_tools if t.nr == p))
+        except StopIteration:
+            current = None
         if current is None:
             return None
         if isinstance(current, ToolGroup):
@@ -102,17 +106,17 @@ def find_tool_by_path(path: list[int], tools: list[ToolNode]) -> ToolEntry | Too
     return current
 
 
-def select_tool(tools: list[ToolNode]) -> None:
-    path: list[int] = []
+def select_tool(tools) -> None:
+    path = []
 
     while True:
         node = find_tool_by_path(path, tools) if path else None
         current_tools = tools if not path else node.tools if isinstance(node, ToolGroup) else []
 
         print()
-        print("# Hauptmenü" if not path else f"# {'.'.join(map(str, path))} {node.name if node else ''}")
+        print("# Hauptmenü" if not path else "# {} {}".format(".".join(map(str, path)), node.name if node else ''))
         for t in current_tools:
-            print(f"{t.nr} {t.name}")
+            print("{} {}".format(t.nr, t.name))
 
         input_str = input("Nr: ").strip()
 

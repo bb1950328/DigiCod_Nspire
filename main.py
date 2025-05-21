@@ -147,5 +147,4 @@ def select_tool(tools) -> None:
 def main():
     select_tool(TOOLS)
 
-if __name__ == "__main__":
-    main()
+main()

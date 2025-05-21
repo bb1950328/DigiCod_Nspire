@@ -24,11 +24,10 @@ jobs:
     - name: Build MicroPython Unix port
       run: |
         git clone https://github.com/micropython/micropython.git
-        cd micropython
-        git submodule update --init lib/mp-readline lib/libffi lib/timeutils
-        make -C mpy-cross
-        make -C ports/unix
-        echo "MICROPYTHON=$(pwd)/ports/unix/micropython" >> $GITHUB_ENV
+        cd micropython/ports/unix
+        make submodules
+        make
+        echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython
       run: |

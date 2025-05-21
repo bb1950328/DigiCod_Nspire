@@ -30,7 +30,7 @@ jobs:
     - name: Create output directory
       run: mkdir tns_files
     - name: Convert .py to .tns
-      run: ./Luna/luna main.py tool_base.py entropy_compression_tools.py rsa_tools.py tns_files/DigiCod_Nspire.tns
+      run: ./Luna/luna main.py tool_base.py tools_entropy_compression.py tools_rsa.py tns_files/DigiCod_Nspire.tns
     - name: Upload .tns artifact
       uses: actions/upload-artifact@v4
       with:

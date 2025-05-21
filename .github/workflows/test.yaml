@@ -39,11 +39,12 @@ jobs:
     - name: Build MicroPython Unix port (older)
       if: matrix.micropython-version != 'latest'
       run: |
+        sudo apt install gcc-12 g++-12
         git clone --depth 1 -b ${{ matrix.micropython-version }} https://github.com/micropython/micropython.git
         cd micropython
         git submodule update --init
         cd ports/unix
-        CFLAGS_EXTRA="-Wno-dangling-pointer" make
+        CC="gcc-12" make
         echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython

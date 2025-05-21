@@ -28,7 +28,7 @@ jobs:
         cd micropython/ports/unix
         make submodules
         make
-        echo "MICROPYTHON=$(pwd)/micropython" >> $GITHUB_ENV
+        echo "MICROPYTHON=$(pwd)/build-standard/micropython" >> $GITHUB_ENV
 
     - name: Run test.py with MicroPython
       run: |

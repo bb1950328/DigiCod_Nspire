@@ -28,7 +28,7 @@ jobs:
     - name: Convert .py to .tns
       run: ./Luna/luna main.py tns_files/DigiCod_Nspire.tns
     - name: Upload .tns artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tns-files
         path: tns_files/

@@ -1,6 +1,7 @@
 from tool_base import *
 import math
 
+
 class EntropyTool(Tool):
     def entropy(self, probs):
         """Berechnet die Entropie einer Wahrscheinlichkeitsverteilung"""
@@ -200,227 +201,316 @@ class RLETool(Tool):
         input()
 
 
-class LZ78Tool(Tool):
-    def lz78_encode(self, data):
-        """Implementiert LZ78-Kompression für eine Zeichenfolge"""
-        dictionary = {"": 0}  # Leerer String hat Index 0
+class LZW(Tool):
+
+    def lzw_encode(self, data, initial_dict=None):  # ← 'self' hinzugefügt
+        """
+        LZW Kompressionsalgorithmus mit optionalem Anfangswörterbuch
+        """
+        # Initialisiere Wörterbuch
+        if initial_dict is None:
+            # Automatisch alle eindeutigen Zeichen aus der Eingabe verwenden
+            unique_chars = sorted(set(data))
+            dictionary = {char: i for i, char in enumerate(unique_chars)}
+        elif isinstance(initial_dict, list):
+            # Liste von Zeichen -> Dictionary erstellen
+            dictionary = {char: i for i, char in enumerate(initial_dict)}
+        elif isinstance(initial_dict, dict):
+            # Dictionary direkt verwenden
+            dictionary = initial_dict.copy()
+        else:
+            raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
+
         result = []
-        w = ""
+        current_string = ""
 
-        for c in data:
-            wc = w + c
-            if wc in dictionary:
-                w = wc
+        for char in data:
+            # Versuche die Zeichenfolge zu erweitern
+            new_string = current_string + char
+
+            if new_string in dictionary:
+                # Zeichenfolge ist im Wörterbuch, erweitere weiter
+                current_string = new_string
             else:
-                # Ausgabe: (Index von w, nächstes Zeichen c)
-                result.append((dictionary[w], c))
-                # Füge wc zum Dictionary hinzu
-                dictionary[wc] = len(dictionary)
-                w = ""
+                # Zeichenfolge nicht im Wörterbuch
+                # Gib Index der aktuellen Zeichenfolge aus
+                result.append(dictionary[current_string])
 
-        # Füge verbleibende Zeichen hinzu, falls vorhanden
-        if w:
-            result.append((dictionary[w], ""))
+                # Füge neue Zeichenfolge zum Wörterbuch hinzu
+                dictionary[new_string] = len(dictionary)
+
+                # Beginne mit dem aktuellen Zeichen
+                current_string = char
+
+        # Gib den Index der letzten Zeichenfolge aus
+        if current_string:
+            result.append(dictionary[current_string])
 
         return result, dictionary
 
-    def lz78_decode(self, encoded_data, dictionary_size):
-        """Dekodiert LZ78-komprimierte Daten"""
-        # Erstelle ein inverses Dictionary mit Indizes als Schlüssel
-        dictionary = {0: ""}
-        result = []
+    def lzw_decode(self, encoded_data, initial_dict=None):  # ← 'self' hinzugefügt
+        """
+        LZW Dekompressionsalgorithmus mit optionalem Anfangswörterbuch
+        """
+        # Initialisiere Wörterbuch
+        if initial_dict is None:
+            # Standard: Ziffern 0-9
+            dictionary = {i: str(i) for i in range(10)}
+        elif isinstance(initial_dict, list):
+            # Liste von Zeichen -> Dictionary erstellen
+            dictionary = {i: char for i, char in enumerate(initial_dict)}
+        elif isinstance(initial_dict, dict):
+            # Dictionary umkehren (char->index zu index->char)
+            dictionary = {v: k for k, v in initial_dict.items()}
+        else:
+            raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
 
-        for index, char in encoded_data:
-            if index in dictionary:
-                w = dictionary[index]
-                if char:  # Falls char nicht leer ist
-                    word = w + char
-                else:
-                    word = w
-                result.append(word)
-                dictionary[len(dictionary)] = word
+        result = ""
+
+        if not encoded_data:
+            return result
+
+        # Erstes Symbol
+        old_code = encoded_data[0]
+        result += dictionary[old_code]
+
+        for i in range(1, len(encoded_data)):
+            new_code = encoded_data[i]
+
+            if new_code in dictionary:
+                # Code ist im Wörterbuch
+                string = dictionary[new_code]
             else:
-                # Dieser Fall sollte theoretisch nicht eintreten
-                print("Warnung: Ungültiger Index {} im kodierten Datenstrom.".format(index))
+                # Code ist nicht im Wörterbuch (sollte der nächste sein)
+                string = dictionary[old_code] + dictionary[old_code][0]
 
-        return "".join(result)
+            result += string
 
-    def run(self) -> None:
-        print("==== Lempel-Ziv LZ78 ====")
-        try:
-            input_text = input("Geben Sie den zu komprimierenden Text ein: ")
+            # Füge neue Zeichenfolge zum Wörterbuch hinzu
+            dictionary[len(dictionary)] = dictionary[old_code] + string[0]
 
-            # Kodieren
-            encoded_data, dictionary = self.lz78_encode(input_text)
-
-            # Ausgabe des Kodierungsergebnisses
-            print("\nEingabetext: {}".format(input_text))
-            print("\nKodiertes Ergebnis:")
-            for index, char in encoded_data:
-                print("({}, '{}')".format(index, char), end=" ")
-
-            # Dictionary-Größe und Kompressionsrate berechnen
-            original_size = len(input_text) * 8  # Annahme: 8 Bits pro Zeichen
-
-            # Berechne die ungefähre Größe des kodierten Ergebnisses in Bits
-            max_index = max(index for index, _ in encoded_data) if encoded_data else 0
-            bits_for_index = max(1, math.ceil(math.log2(max_index + 1))) if max_index > 0 else 1
-
-            # 8 Bits für jeden Zeichencode + bits_for_index für den Index
-            encoded_size = sum(bits_for_index + (8 if char else 0) for _, char in encoded_data)
-
-            print("\n\nDictionary-Größe: {} Einträge".format(len(dictionary)))
-            print("Original: ~{} Bits (8 Bits pro Zeichen)".format(original_size))
-            print("Kodiert: ~{} Bits".format(encoded_size))
-
-            compression_ratio = original_size / encoded_size if encoded_size > 0 else float('inf')
-            print("Kompressionsrate: {:.2f}".format(compression_ratio))
-
-            # Dekodieren zur Überprüfung
-            decoded_text = self.lz78_decode(encoded_data, len(dictionary))
-
-            if decoded_text == input_text:
-                print("\nÜberprüfung: Die Dekodierung stimmt mit der Originaleingabe überein.")
-            else:
-                print("\nWarnung: Die Dekodierung stimmt nicht mit der Originaleingabe überein!")
-                print("Dekodiert: {}".format(decoded_text))
-
-        except Exception as e:
-            print("Fehler: {}".format(str(e)))
-
-        print("\nDrücke Enter, um fortzufahren...")
-        input()
-
-
-class LZ77Tool(Tool):
-    def find_longest_match(self, data, cursor, window_size, lookahead_size):
-        """Findet die längste Übereinstimmung im Suchfenster"""
-        end_of_buffer = min(cursor + lookahead_size, len(data))
-
-        # Falls wir am Ende der Daten angekommen sind
-        if cursor >= len(data):
-            return 0, 0, ""
-
-        # Berechne die Suche im Fenster
-        search_start = max(0, cursor - window_size)
-        search_window = data[search_start:cursor]
-        lookahead = data[cursor:end_of_buffer]
-
-        match_length = 0
-        match_offset = 0
-        next_char = ""
-
-        # Länge 0, wenn keine Übereinstimmung gefunden
-        if not lookahead:
-            return match_offset, match_length, next_char
-
-        # Der Fall, wenn keine Übereinstimmung gefunden wird
-        next_char = lookahead[0]
-
-        # Suche nach Übereinstimmungen
-        for i in range(len(search_window), 0, -1):
-            pattern = search_window[i - 1:]
-            length = 0
-
-            # Finde die längste Übereinstimmung
-            for j in range(min(len(pattern), len(lookahead))):
-                if pattern[j] != lookahead[j]:
-                    break
-                length += 1
-
-            # Wenn wir eine längere Übereinstimmung gefunden haben
-            if length > match_length:
-                match_length = length
-                match_offset = len(search_window) - i + 1
-
-        # Nur wenn wir mindestens ein Zeichen kodieren
-        if match_length > 0:
-            if cursor + match_length < len(data):
-                next_char = data[cursor + match_length]
-            else:
-                next_char = ""
-
-        return match_offset, match_length, next_char
-
-    def lz77_encode(self, data, window_size=10, lookahead_size=5):
-        """Implementiert LZ77-Kompression"""
-        result = []
-        cursor = 0
-
-        while cursor < len(data):
-            offset, length, next_char = self.find_longest_match(data, cursor, window_size, lookahead_size)
-            result.append((offset, length, next_char))
-            cursor += length + 1  # +1 wegen des zusätzlichen Zeichens
+            old_code = new_code
 
         return result
 
-    def lz77_decode(self, encoded_data):
-        """Dekodiert LZ77-komprimierte Daten"""
+    def print_encoding_steps(self, data, initial_dict=None):  # ← 'self' hinzugefügt
+        """
+        Zeigt die Schritte der LZW-Kodierung mit optionalem Anfangswörterbuch
+        """
+        # Initialisiere Wörterbuch
+        if initial_dict is None:
+            # Automatisch alle eindeutigen Zeichen aus der Eingabe verwenden
+            unique_chars = sorted(set(data))
+            dictionary = {char: i for i, char in enumerate(unique_chars)}
+            print("Automatisches Wörterbuch für Zeichen: {}".format(unique_chars))
+        elif isinstance(initial_dict, list):
+            dictionary = {char: i for i, char in enumerate(initial_dict)}
+            print("Anfangswörterbuch aus Liste: {}".format(initial_dict))
+        elif isinstance(initial_dict, dict):
+            dictionary = initial_dict.copy()
+            print("Vorgegebenes Wörterbuch: {}".format(initial_dict))
+        else:
+            raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
+
+        print("Eingabe: {}".format(data))
+        print("Startwörterbuch: {}".format(dictionary))
+        print("\nKodierungsschritte:")
+        print("Buffer | Erkannte Zeichenfolge (Index) | Neuer Eintrag")
+        print("-" * 60)
+
         result = []
+        current_string = ""
+        buffer_pos = 0
 
-        for offset, length, next_char in encoded_data:
-            # Hole bereits dekodierte Zeichen aus dem "Fenster"
-            if offset > 0 and length > 0:
-                start = len(result) - offset
-                for i in range(length):
-                    if start + i >= 0 and start + i < len(result):
-                        result.append(result[start + i])
-                    else:
-                        # This handles repetitions that exceed the available window
-                        # For example, when we need to repeat 'A' 3 times but only have
-                        # one 'A' in the window, we keep appending 'A' as we decode
-                        if result:
-                            result.append(result[-1])
+        for i, char in enumerate(data):
+            buffer = data[buffer_pos:i + 1]
+            new_string = current_string + char
 
-            # Füge das nächste Zeichen hinzu, wenn es existiert
-            if next_char:
-                result.append(next_char)
-
-        return "".join(result)
-
-    def run(self) -> None:
-        print("==== Lempel-Ziv LZ77 ====")
-        try:
-            input_text = input("Geben Sie den zu komprimierenden Text ein: ")
-            window_size = int(input("Fenstergröße (Standard: 10): ") or "10")
-            lookahead_size = int(input("Vorschaugröße (Standard: 5): ") or "5")
-
-            # Kodieren
-            encoded_data = self.lz77_encode(input_text, window_size, lookahead_size)
-
-            # Ausgabe des Kodierungsergebnisses
-            print("\nEingabetext: {}".format(input_text))
-            print("\nKodiertes Ergebnis (Offset, Länge, Nächstes Zeichen):")
-            for offset, length, next_char in encoded_data:
-                print("({}, {}, '{}')".format(offset, length, next_char), end=" ")
-
-            # Berechne Kompressionsrate
-            original_size = len(input_text) * 8  # Annahme: 8 Bits pro Zeichen
-
-            # Berechne die ungefähre Größe des kodierten Ergebnisses in Bits
-            bits_for_offset = math.ceil(math.log2(window_size + 1)) if window_size > 0 else 1
-            bits_for_length = math.ceil(math.log2(lookahead_size + 1)) if lookahead_size > 0 else 1
-
-            # bits_for_offset + bits_for_length + 8 Bits für das nächste Zeichen
-            encoded_size = sum(bits_for_offset + bits_for_length + (8 if char else 0) for _, _, char in encoded_data)
-
-            print("\n\nOriginal: ~{} Bits (8 Bits pro Zeichen)".format(original_size))
-            print("Kodiert: ~{} Bits".format(encoded_size))
-
-            compression_ratio = original_size / encoded_size if encoded_size > 0 else float('inf')
-            print("Kompressionsrate: {:.2f}".format(compression_ratio))
-
-            # Dekodieren zur Überprüfung
-            decoded_text = self.lz77_decode(encoded_data)
-
-            if decoded_text == input_text:
-                print("\nÜberprüfung: Die Dekodierung stimmt mit der Originaleingabe überein.")
+            if new_string in dictionary:
+                current_string = new_string
             else:
-                print("\nWarnung: Die Dekodierung stimmt nicht mit der Originaleingabe überein!")
-                print("Dekodiert: {}".format(decoded_text))
+                # Ausgabe
+                index = dictionary[current_string] if current_string else None
+                if index is not None:
+                    result.append(index)
+                    next_entry_index = len(dictionary)
+                    print("{}   | {} ({}){}| → {}: {}".format(
+                        buffer.ljust(6),
+                        current_string,
+                        index,
+                        ' ' * (20 - len(current_string) - len(str(index))),
+                        next_entry_index,
+                        new_string
+                    ))
+                    dictionary[new_string] = next_entry_index
 
-        except Exception as e:
-            print("Fehler: {}".format(str(e)))
+                current_string = char
+                buffer_pos = i
+
+        # Letzter Eintrag
+        if current_string:
+            index = dictionary[current_string]
+            result.append(index)
+            print("{}   | {} ({})".format(data[buffer_pos:].ljust(6), current_string, index))
+
+        print("\nKodierte Nachricht: {}".format(' '.join(map(str, result))))
+
+        # Zeige finales Wörterbuch
+        print("\nFinales Wörterbuch:")
+        for key, value in sorted(dictionary.items(), key=lambda x: x[1]):
+            print("Index {}: '{}'".format(value, key))
+
+        return result, dictionary
+
+    def create_initial_dict_from_input(self):
+        """
+        Hilfsfunktion um Anfangswörterbuch vom Benutzer zu erstellen
+        """
+        print("\n==== Anfangswörterbuch wählen ====")
+        print("1. Automatisch aus Eingabe")
+        print("2. Ziffern 0-9 (Standard)")
+        print("3. Buchstaben A-Z")
+        print("4. Kleinbuchstaben a-z")
+        print("5. Benutzerdefiniert")
+
+        choice = input("Wähle eine Option (1-5): ").strip()
+        print("Gewählte Option: {}".format(choice))  # Debug-Ausgabe
+
+        if choice == "1":
+            print("→ Automatische Erkennung gewählt")
+            return None  # Automatische Erkennung
+        elif choice == "2":
+            print("→ Ziffern 0-9 gewählt")
+            return [str(i) for i in range(10)]
+        elif choice == "3":
+            print("→ Buchstaben A-Z gewählt")
+            return [chr(i) for i in range(ord('A'), ord('Z') + 1)]
+        elif choice == "4":
+            print("→ Kleinbuchstaben a-z gewählt")
+            return [chr(i) for i in range(ord('a'), ord('z') + 1)]
+        elif choice == "5":
+            print("→ Benutzerdefiniert gewählt")
+            chars_input = input("Zeichen eingeben (ohne Leerzeichen, z.B. 'abcd123'): ").strip()
+            if chars_input:
+                custom_dict = list(chars_input)
+                print("Benutzerdefiniertes Wörterbuch: {}".format(custom_dict))
+                return custom_dict
+            else:
+                print("Keine Eingabe - verwende Standard (Ziffern 0-9)")
+                return [str(i) for i in range(10)]
+        else:
+            print("Ungültige Eingabe '{}' - verwende Standard (Ziffern 0-9)".format(choice))
+            return [str(i) for i in range(10)]  # Default
+
+    def run(self):
+        """
+        Hauptmenü für LZW-Funktionen
+        """
+        print("==== Lempel-Ziv-Welch (LZW) ====")
+        print("1. Dekodieren")
+        print("2. Kodieren")
+        print("0. Exit")
+
+
+        subchoice = input("\nWähle eine Option: ").strip()
+
+
+        if subchoice == "1":
+            # Dekodieren
+            try:
+                print("Eingabe (LZW-Codes durch Leerzeichen getrennt):")
+                print("Beispiel: 1 2 3 10 12 11 13")
+                data_str = input().strip()
+
+                if not data_str:
+                    print("Keine Eingabe erhalten!")
+                    return
+
+                encoded_data = list(map(int, data_str.split()))
+                print("Codes erhalten: {}".format(encoded_data))
+
+                initial_dict = self.create_initial_dict_from_input()
+                print("Dekodierungs-Wörterbuch: {}".format(initial_dict))
+
+                result = self.lzw_decode(encoded_data, initial_dict)
+                print("\nDekodiert: '{}'".format(result))
+                print("Anzahl Codes eingegeben: {}".format(len(encoded_data)))
+                print("Anzahl Zeichen dekodiert: {}".format(len(result)))
+
+                # Zeige Dekodierungs-Wörterbuch
+                if initial_dict is None:
+                    print("WARNUNG: Automatisches Wörterbuch bei Dekodierung nicht möglich!")
+                    print("Verwende Standard: Ziffern 0-9")
+                else:
+                    print("Verwendetes Dekodierungs-Wörterbuch:")
+                    for i, char in enumerate(initial_dict):
+                        print("  {}: '{}'".format(i, char))
+
+            except Exception as e:
+                print("Fehler: {}".format(str(e)))
+                import traceback
+                traceback.print_exc()
+
+        elif subchoice == "2":
+            # Schritt-für-Schritt Anzeige
+            try:
+                data = input("Eingabe (codewort zum kodieren): ")
+                print("Eingabe erhalten: '{}'".format(data))
+
+                initial_dict = self.create_initial_dict_from_input()
+                print("Gewähltes Wörterbuch für Schritt-Anzeige: {}".format(initial_dict))
+
+                print("\n{}".format('=' * 60))
+                result, final_dict = self.print_encoding_steps(data, initial_dict)
+                print("{}".format('=' * 60))
+
+                # Test der Dekodierung
+                decoded = self.lzw_decode(result, initial_dict)
+                print("\nVerifikation:")
+                print("Original:   '{}'".format(data))
+                print("Dekodiert:  '{}'".format(decoded))
+                print("Korrekt:    {}".format('✓' if data == decoded else '✗'))
+
+                # Kompressionsrate
+                if result:
+                    # Berechne Bits für Original
+                    if initial_dict is None:
+                        alphabet_size = len(set(data))
+                        print("Automatisches Alphabet: {} (Größe: {})".format(sorted(set(data)), alphabet_size))
+                    elif isinstance(initial_dict, list):
+                        alphabet_size = len(initial_dict)
+                        print("Verwendetes Alphabet: {} (Größe: {})".format(initial_dict, alphabet_size))
+                    else:
+                        alphabet_size = len(initial_dict)
+                        print("Dictionary-Alphabet (Größe: {})".format(alphabet_size))
+
+                    bits_per_char = max(1, alphabet_size.bit_length())
+                    original_bits = len(data) * bits_per_char
+
+                    # Berechne Bits für komprimierte Version
+                    max_index = max(result) if result else 0
+                    bits_per_code = max(bits_per_char, max_index.bit_length())
+                    compressed_bits = len(result) * bits_per_code
+
+                    compression_ratio = (1 - compressed_bits / original_bits) * 100 if original_bits > 0 else 0
+
+                    print("\nKompression:")
+                    print("Alphabet-Größe: {} (benötigt {} Bit pro Zeichen)".format(alphabet_size, bits_per_char))
+                    print("Original: {} Bits ({} Zeichen × {} Bit)".format(original_bits, len(data), bits_per_char))
+                    print(
+                        "Komprimiert: {} Bits ({} Codes × {} Bit)".format(compressed_bits, len(result), bits_per_code))
+                    print("Kompressionsrate: {:.1f}%".format(compression_ratio))
+
+
+
+            except Exception as e:
+                print("Fehler: {}".format(str(e)))
+                import traceback
+                traceback.print_exc()
+
+        else:
+            print("Ungültige Option gewählt!")
 
         print("\nDrücke Enter, um fortzufahren...")
         input()
+

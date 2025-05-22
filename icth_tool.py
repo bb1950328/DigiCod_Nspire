@@ -104,130 +104,379 @@ def rle_decode(data, start_with="1"):
     return result
 
 
-def lz78_encode(data):
+def lzw_encode(data, initial_dict=None):
     """
-    LZ78 Kompressionsalgorithmus
-    Gibt Sequenz von (Index, Zeichen)-Paaren zurück
+    LZW Kompressionsalgorithmus mit optionalem Anfangswörterbuch
+
+    Args:
+        data: Eingabestring
+        initial_dict: Dict mit Anfangswörterbuch oder None für automatische Erkennung
+                     Format: {"zeichen": index, ...} oder Liste von Zeichen
+
+    Returns:
+        (result_indices, final_dictionary)
     """
+    # Initialisiere Wörterbuch
+    if initial_dict is None:
+        # Automatisch alle eindeutigen Zeichen aus der Eingabe verwenden
+        unique_chars = sorted(set(data))
+        dictionary = {char: i for i, char in enumerate(unique_chars)}
+    elif isinstance(initial_dict, list):
+        # Liste von Zeichen -> Dictionary erstellen
+        dictionary = {char: i for i, char in enumerate(initial_dict)}
+    elif isinstance(initial_dict, dict):
+        # Dictionary direkt verwenden
+        dictionary = initial_dict.copy()
+    else:
+        raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
+
     result = []
-    dictionary = {"": 0}  # Leere Zeichenfolge hat Index 0
-    current_phrase = ""
+    current_string = ""
 
-    i = 0
-    while i < len(data):
-        current_char = data[i]
-        potential_phrase = current_phrase + current_char
+    for char in data:
+        # Versuche die Zeichenfolge zu erweitern
+        new_string = current_string + char
 
-        if potential_phrase in dictionary:
-            # Erweitere aktuelle Phrase
-            current_phrase = potential_phrase
+        if new_string in dictionary:
+            # Zeichenfolge ist im Wörterbuch, erweitere weiter
+            current_string = new_string
         else:
-            # Ausgabe: (Index der aktuellen Phrase, nächstes Zeichen)
-            result.append((dictionary[current_phrase], current_char))
+            # Zeichenfolge nicht im Wörterbuch
+            # Gib Index der aktuellen Zeichenfolge aus
+            result.append(dictionary[current_string])
 
-            # Füge neue Phrase zum Wörterbuch hinzu
-            dictionary[potential_phrase] = len(dictionary)
+            # Füge neue Zeichenfolge zum Wörterbuch hinzu
+            dictionary[new_string] = len(dictionary)
 
-            # Beginne neue Phrase
-            current_phrase = ""
+            # Beginne mit dem aktuellen Zeichen
+            current_string = char
 
-        i += 1
+    # Gib den Index der letzten Zeichenfolge aus
+    if current_string:
+        result.append(dictionary[current_string])
 
-    # Behandle die letzte Phrase, falls nicht leer
-    if current_phrase:
-        result.append((dictionary[current_phrase], ""))
-
-    return result
+    return result, dictionary
 
 
-def lz78_decode(encoded_data):
+def lzw_decode(encoded_data, initial_dict=None):
     """
-    LZ78 Dekompressionsalgorithmus
-    Dekomprimiert eine Liste von (Index, Zeichen)-Paaren
+    LZW Dekompressionsalgorithmus mit optionalem Anfangswörterbuch
+
+    Args:
+        encoded_data: Liste von Indizes
+        initial_dict: Dict/Liste mit Anfangswörterbuch oder None für Ziffern 0-9
+
+    Returns:
+        Dekomprimierter String
     """
-    result = ""
-    dictionary = [""]  # Index 0 ist leere Zeichenfolge
+    # Initialisiere Wörterbuch
+    if initial_dict is None:
+        # Standard: Ziffern 0-9
+        dictionary = {i: str(i) for i in range(10)}
+    elif isinstance(initial_dict, list):
+        # Liste von Zeichen -> Dictionary erstellen
+        dictionary = {i: char for i, char in enumerate(initial_dict)}
+    elif isinstance(initial_dict, dict):
+        # Dictionary umkehren (char->index zu index->char)
+        dictionary = {v: k for k, v in initial_dict.items()}
+    else:
+        raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
 
-    for index, char in encoded_data:
-        # Rekonstruiere die Phrase aus dem Wörterbuch
-        if index < len(dictionary):
-            phrase = dictionary[index] + char
-        else:
-            # Spezialfall: Wenn ein Index verwendet wird, der noch nicht im Wörterbuch ist
-            phrase = dictionary[-1] + dictionary[-1][0]
-
-        # Füge dekodierte Phrase zum Ergebnis hinzu
-        result += phrase
-
-        # Aktualisiere das Wörterbuch
-        dictionary.append(phrase)
-
-    return result
-
-
-def lz77_encode(data, window_size=7, lookahead_size=4):
-    """
-    Vereinfachte LZ77 Kompression mit fixen Fenstergröße und Vorschau
-    Gibt Triple (Offset, Länge, nächstes Zeichen) zurück
-    """
-    result = []
-    i = 0
-
-    while i < len(data):
-        # Suche nach der längsten übereinstimmenden Sequenz im Fenster
-        best_length = 0
-        best_offset = 0
-
-        # Bestimme das aktuelle Fenster und den Vorschau-Puffer
-        start = max(0, i - window_size)
-        window = data[start:i]
-        lookahead = data[i:min(i + lookahead_size, len(data))]
-
-        # Finde die längste Übereinstimmung
-        for j in range(1, len(window) + 1):
-            pattern = window[-j:]
-            match_length = 0
-
-            while (match_length < len(lookahead) and
-                   match_length < j and
-                   lookahead[match_length] == pattern[match_length]):
-                match_length += 1
-
-            if match_length > best_length:
-                best_length = match_length
-                best_offset = j
-
-        # Nächstes Zeichen nach der Übereinstimmung oder erstes Zeichen
-        next_char = lookahead[best_length] if best_length < len(lookahead) else ""
-
-        # Ausgabe: (Offset, Länge, nächstes Zeichen)
-        result.append((best_offset, best_length, next_char))
-
-        # Gehe um die Länge der Übereinstimmung + 1 vorwärts
-        i += best_length + 1
-
-    return result
-
-
-def lz77_decode(encoded_data):
-    """
-    Dekomprimiert LZ77-kodierte Daten (Offset, Länge, nächstes Zeichen)
-    """
     result = ""
 
-    for offset, length, next_char in encoded_data:
-        # Füge übereinstimmende Sequenz hinzu
-        if offset > 0 and length > 0:
-            start = len(result) - offset
-            for i in range(length):
-                result += result[start + i]
+    if not encoded_data:
+        return result
 
-        # Füge nächstes Zeichen hinzu
-        if next_char:
-            result += next_char
+    # Erstes Symbol
+    old_code = encoded_data[0]
+    result += dictionary[old_code]
+
+    for i in range(1, len(encoded_data)):
+        new_code = encoded_data[i]
+
+        if new_code in dictionary:
+            # Code ist im Wörterbuch
+            string = dictionary[new_code]
+        else:
+            # Code ist nicht im Wörterbuch (sollte der nächste sein)
+            string = dictionary[old_code] + dictionary[old_code][0]
+
+        result += string
+
+        # Füge neue Zeichenfolge zum Wörterbuch hinzu
+        dictionary[len(dictionary)] = dictionary[old_code] + string[0]
+
+        old_code = new_code
 
     return result
 
+
+def print_encoding_steps(data, initial_dict=None):
+    """
+    Zeigt die Schritte der LZW-Kodierung mit optionalem Anfangswörterbuch
+    """
+    # Initialisiere Wörterbuch
+    if initial_dict is None:
+        # Automatisch alle eindeutigen Zeichen aus der Eingabe verwenden
+        unique_chars = sorted(set(data))
+        dictionary = {char: i for i, char in enumerate(unique_chars)}
+        print(f"Automatisches Wörterbuch für Zeichen: {unique_chars}")
+    elif isinstance(initial_dict, list):
+        dictionary = {char: i for i, char in enumerate(initial_dict)}
+        print(f"Anfangswörterbuch aus Liste: {initial_dict}")
+    elif isinstance(initial_dict, dict):
+        dictionary = initial_dict.copy()
+        print(f"Vorgegebenes Wörterbuch: {initial_dict}")
+    else:
+        raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
+
+    print(f"Eingabe: {data}")
+    print(f"Startwörterbuch: {dictionary}")
+    print("\nKodierungsschritte:")
+    print("Buffer | Erkannte Zeichenfolge (Index) | Neuer Eintrag")
+    print("-" * 60)
+
+    result = []
+    current_string = ""
+    buffer_pos = 0
+
+    for i, char in enumerate(data):
+        buffer = data[buffer_pos:i + 1]
+        new_string = current_string + char
+
+        if new_string in dictionary:
+            current_string = new_string
+        else:
+            # Ausgabe
+            index = dictionary[current_string] if current_string else None
+            if index is not None:
+                result.append(index)
+                next_entry_index = len(dictionary)
+                print(
+                    f"{buffer:<6} | {current_string} ({index}){' ' * (20 - len(current_string) - len(str(index)))} | → {next_entry_index}: {new_string}")
+                dictionary[new_string] = next_entry_index
+
+            current_string = char
+            buffer_pos = i
+
+    # Letzter Eintrag
+    if current_string:
+        index = dictionary[current_string]
+        result.append(index)
+        print(f"{data[buffer_pos:]:<6} | {current_string} ({index})")
+
+    print(f"\nKodierte Nachricht: {' '.join(map(str, result))}")
+
+    # Zeige finales Wörterbuch
+    print(f"\nFinales Wörterbuch:")
+    for key, value in sorted(dictionary.items(), key=lambda x: x[1]):
+        print(f"Index {value}: '{key}'")
+
+    return result, dictionary
+
+
+def create_initial_dict_from_input():
+    """
+    Hilfsfunktion um Anfangswörterbuch vom Benutzer zu erstellen
+    """
+    print("\n==== Anfangswörterbuch wählen ====")
+    print("1. Automatisch aus Eingabe")
+    print("2. Ziffern 0-9 (Standard)")
+    print("3. Buchstaben A-Z")
+    print("4. Kleinbuchstaben a-z")
+    print("5. Benutzerdefiniert")
+
+    choice = input("Wähle eine Option (1-5): ").strip()
+    print(f"Gewählte Option: {choice}")  # Debug-Ausgabe
+
+    if choice == "1":
+        print("→ Automatische Erkennung gewählt")
+        return None  # Automatische Erkennung
+    elif choice == "2":
+        print("→ Ziffern 0-9 gewählt")
+        return [str(i) for i in range(10)]
+    elif choice == "3":
+        print("→ Buchstaben A-Z gewählt")
+        return [chr(i) for i in range(ord('A'), ord('Z') + 1)]
+    elif choice == "4":
+        print("→ Kleinbuchstaben a-z gewählt")
+        return [chr(i) for i in range(ord('a'), ord('z') + 1)]
+    elif choice == "5":
+        print("→ Benutzerdefiniert gewählt")
+        chars_input = input("Zeichen eingeben (ohne Leerzeichen, z.B. 'abcd123'): ").strip()
+        if chars_input:
+            custom_dict = list(chars_input)
+            print(f"Benutzerdefiniertes Wörterbuch: {custom_dict}")
+            return custom_dict
+        else:
+            print("Keine Eingabe - verwende Standard (Ziffern 0-9)")
+            return [str(i) for i in range(10)]
+    else:
+        print(f"Ungültige Eingabe '{choice}' - verwende Standard (Ziffern 0-9)")
+        return [str(i) for i in range(10)]  # Default
+
+def entropie_menu():
+    global current_menu
+    current_menu = "entropie"
+
+    while current_menu == "entropie":
+        clear_screen()
+        print("==== Entropie und Kompression ====")
+        print("1. Entropie berechnen")
+        print("2. Redundanz berechnen")
+        print("3. Huffman-Code erstellen")
+        print("4. Lauflängenkodierung (RLE)")
+        print("5. LZW mit Schritt-Anzeige")
+        print("0. Zurück zum Hauptmenü")
+
+        choice = input("\nWähle eine Option: ")
+
+        if choice == "1":
+            # Entropie berechnen
+            clear_screen()
+            print("==== Entropie berechnen ====")
+            try:
+                n = int(input("Anzahl der Symbole: "))
+                probs = []
+                for i in range(n):
+                    p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
+                    probs.append(p)
+
+                result = entropy(probs)
+                print(f"\nEntropie: {result:.6f} bits/Symbol")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "2":
+            # Redundanz berechnen
+            clear_screen()
+            print("==== Redundanz berechnen ====")
+            try:
+                n = int(input("Anzahl der Symbole: "))
+                probs = []
+                lengths = []
+                for i in range(n):
+                    p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
+                    l = float(input(f"Codewortlänge für Symbol {i + 1}: "))
+                    probs.append(p)
+                    lengths.append(l)
+
+                result = redundanz(probs, lengths)
+                print(f"\nRedundanz: {result:.6f} bits/Symbol")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "3":
+            # Huffman-Code erstellen
+            clear_screen()
+            print("==== Huffman-Code erstellen ====")
+            try:
+                n = int(input("Anzahl der Symbole: "))
+                symbols = []
+                freqs = []
+                for i in range(n):
+                    s = input(f"Symbol {i + 1}: ")
+                    f = float(input(f"Wahrscheinlichkeit für Symbol {s}: "))
+                    symbols.append(s)
+                    freqs.append(f)
+
+                huffman_code = huffman_coding(symbols, freqs)
+                print("\nHuffman-Code:")
+                for sym, code in huffman_code.items():
+                    print(f"{sym}: {code}")
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+            pause()
+
+        elif choice == "4":
+            # Lauflängenkodierung
+            clear_screen()
+            print("==== Lauflängenkodierung (RLE) ====")
+            print("1. Kodieren")
+            print("2. Dekodieren")
+            subchoice = input("\nWähle eine Option: ")
+
+            if subchoice == "1":
+                try:
+                    data = input("Eingabe (Bitfolge): ")
+                    result = rle_encode(data)
+                    print(f"\nRLE-Kodiert: {result}")
+                except Exception as e:
+                    print(f"Fehler: {str(e)}")
+
+            elif subchoice == "2":
+                try:
+                    data = input("Eingabe (RLE-Kodiert): ")
+                    start = input("Startet mit ('0' oder '1', Default '1'): ") or "1"
+                    result = rle_decode(data, start)
+                    print(f"\nDekodiert: {result}")
+                except Exception as e:
+                    print(f"Fehler: {str(e)}")
+
+            pause()
+
+        elif choice == "5":
+            # LZW mit Schritt-für-Schritt Anzeige - KORRIGIERT
+            clear_screen()
+            print("==== LZW mit Schritt-Anzeige ====")
+            try:
+                data = input("Eingabe: ")  # Nicht mehr "Ziffernfolge"!
+                print(f"Eingabe erhalten: '{data}'")
+
+                # HIER war das Hauptproblem - create_initial_dict_from_input() wurde NICHT aufgerufen!
+                initial_dict = create_initial_dict_from_input()
+                print(f"Gewähltes Wörterbuch für Schritt-Anzeige: {initial_dict}")
+
+                print(f"\n{'=' * 60}")
+                result, final_dict = print_encoding_steps(data, initial_dict)  # MIT Parameter!
+                print(f"{'=' * 60}")
+
+                # Test der Dekodierung
+                decoded = lzw_decode(result, initial_dict)  # MIT Parameter!
+                print(f"\nVerifikation:")
+                print(f"Original:   '{data}'")
+                print(f"Dekodiert:  '{decoded}'")
+                print(f"Korrekt:    {'✓' if data == decoded else '✗'}")
+
+                # Kompressionsrate
+                if result:
+                    # Berechne Bits für Original
+                    if initial_dict is None:
+                        alphabet_size = len(set(data))
+                        print(f"Automatisches Alphabet: {sorted(set(data))} (Größe: {alphabet_size})")
+                    elif isinstance(initial_dict, list):
+                        alphabet_size = len(initial_dict)
+                        print(f"Verwendetes Alphabet: {initial_dict} (Größe: {alphabet_size})")
+                    else:
+                        alphabet_size = len(initial_dict)
+                        print(f"Dictionary-Alphabet (Größe: {alphabet_size})")
+
+                    bits_per_char = max(1, alphabet_size.bit_length())
+                    original_bits = len(data) * bits_per_char
+
+                    # Berechne Bits für komprimierte Version
+                    max_index = max(result) if result else 0
+                    bits_per_code = max(bits_per_char, max_index.bit_length())
+                    compressed_bits = len(result) * bits_per_code
+
+                    compression_ratio = (1 - compressed_bits / original_bits) * 100 if original_bits > 0 else 0
+
+                    print(f"\nKompression:")
+                    print(f"Alphabet-Größe: {alphabet_size} (benötigt {bits_per_char} Bit pro Zeichen)")
+                    print(f"Original: {original_bits} Bits ({len(data)} Zeichen × {bits_per_char} Bit)")
+                    print(f"Komprimiert: {compressed_bits} Bits ({len(result)} Codes × {bits_per_code} Bit)")
+                    print(f"Kompressionsrate: {compression_ratio:.1f}%")
+
+            except Exception as e:
+                print(f"Fehler: {str(e)}")
+                import traceback
+                traceback.print_exc()
+            pause()
+
+        elif choice == "0":
+            current_menu = "main"
 
 #####################
 # Verschlüsselung (RSA) #
@@ -619,193 +868,6 @@ def analyze_ieee754(bits):
     else:
         # Normalisierte Zahl
         return (-1) ** sign * (2 ** (exponent - 127)) * mantissa
-
-
-#####################
-# Menüfunktionen #
-#####################
-
-def entropie_menu():
-    global current_menu
-    current_menu = "entropie"
-
-    while current_menu == "entropie":
-        clear_screen()
-        print("==== Entropie und Kompression ====")
-        print("1. Entropie berechnen")
-        print("2. Redundanz berechnen")
-        print("3. Huffman-Code erstellen")
-        print("4. Lauflängenkodierung (RLE)")
-        print("5. Lempel-Ziv LZ78")
-        print("6. Lempel-Ziv LZ77")
-        print("0. Zurück zum Hauptmenü")
-
-        choice = input("\nWähle eine Option: ")
-
-        if choice == "1":
-            # Entropie berechnen
-            clear_screen()
-            print("==== Entropie berechnen ====")
-            try:
-                n = int(input("Anzahl der Symbole: "))
-                probs = []
-                for i in range(n):
-                    p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
-                    probs.append(p)
-
-                result = entropy(probs)
-                print(f"\nEntropie: {result:.6f} bits/Symbol")
-            except Exception as e:
-                print(f"Fehler: {str(e)}")
-            pause()
-
-        elif choice == "2":
-            # Redundanz berechnen
-            clear_screen()
-            print("==== Redundanz berechnen ====")
-            try:
-                n = int(input("Anzahl der Symbole: "))
-                probs = []
-                lengths = []
-                for i in range(n):
-                    p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
-                    l = float(input(f"Codewortlänge für Symbol {i + 1}: "))
-                    probs.append(p)
-                    lengths.append(l)
-
-                result = redundanz(probs, lengths)
-                print(f"\nRedundanz: {result:.6f} bits/Symbol")
-            except Exception as e:
-                print(f"Fehler: {str(e)}")
-            pause()
-
-        elif choice == "3":
-            # Huffman-Code erstellen
-            clear_screen()
-            print("==== Huffman-Code erstellen ====")
-            try:
-                n = int(input("Anzahl der Symbole: "))
-                symbols = []
-                freqs = []
-                for i in range(n):
-                    s = input(f"Symbol {i + 1}: ")
-                    f = float(input(f"Wahrscheinlichkeit für Symbol {s}: "))
-                    symbols.append(s)
-                    freqs.append(f)
-
-                huffman_code = huffman_coding(symbols, freqs)
-                print("\nHuffman-Code:")
-                for sym, code in huffman_code.items():
-                    print(f"{sym}: {code}")
-            except Exception as e:
-                print(f"Fehler: {str(e)}")
-            pause()
-
-        elif choice == "4":
-            # Lauflängenkodierung
-            clear_screen()
-            print("==== Lauflängenkodierung (RLE) ====")
-            print("1. Kodieren")
-            print("2. Dekodieren")
-            subchoice = input("\nWähle eine Option: ")
-
-            if subchoice == "1":
-                try:
-                    data = input("Eingabe (Bitfolge): ")
-                    result = rle_encode(data)
-                    print(f"\nRLE-Kodiert: {result}")
-                except Exception as e:
-                    print(f"Fehler: {str(e)}")
-
-            elif subchoice == "2":
-                try:
-                    data = input("Eingabe (RLE-Kodiert): ")
-                    start = input("Startet mit ('0' oder '1', Default '1'): ") or "1"
-                    result = rle_decode(data, start)
-                    print(f"\nDekodiert: {result}")
-                except Exception as e:
-                    print(f"Fehler: {str(e)}")
-
-            pause()
-
-        elif choice == "5":
-            # Lempel-Ziv LZ78
-            clear_screen()
-            print("==== Lempel-Ziv LZ78 ====")
-            print("1. Kodieren")
-            print("2. Dekodieren")
-            subchoice = input("\nWähle eine Option: ")
-
-            if subchoice == "1":
-                try:
-                    data = input("Eingabe: ")
-                    result = lz78_encode(data)
-                    print("\nLZ78-Kodiert:")
-                    for idx, char in result:
-                        print(f"({idx}, '{char}')", end=" ")
-                    print()
-                except Exception as e:
-                    print(f"Fehler: {str(e)}")
-
-            elif subchoice == "2":
-                try:
-                    print("Eingabe LZ78-Kodiert (Format: idx1,char1 idx2,char2 ...):")
-                    data_str = input()
-                    pairs = data_str.split()
-                    encoded_data = []
-                    for pair in pairs:
-                        idx, char = pair.strip("()").split(",")
-                        encoded_data.append((int(idx), char.strip("'")))
-
-                    result = lz78_decode(encoded_data)
-                    print(f"\nDekodiert: {result}")
-                except Exception as e:
-                    print(f"Fehler: {str(e)}")
-
-            pause()
-
-        elif choice == "6":
-            # Lempel-Ziv LZ77
-            clear_screen()
-            print("==== Lempel-Ziv LZ77 ====")
-            print("1. Kodieren")
-            print("2. Dekodieren")
-            subchoice = input("\nWähle eine Option: ")
-
-            if subchoice == "1":
-                try:
-                    data = input("Eingabe: ")
-                    window = int(input("Fenstergröße (Standard: 7): ") or "7")
-                    lookahead = int(input("Vorschau-Größe (Standard: 4): ") or "4")
-
-                    result = lz77_encode(data, window, lookahead)
-                    print("\nLZ77-Kodiert:")
-                    for offset, length, char in result:
-                        print(f"({offset}, {length}, '{char}')", end=" ")
-                    print()
-                except Exception as e:
-                    print(f"Fehler: {str(e)}")
-
-            elif subchoice == "2":
-                try:
-                    print("Eingabe LZ77-Kodiert (Format: offset1,length1,char1 offset2,length2,char2 ...):")
-                    data_str = input()
-                    triplets = data_str.split()
-                    encoded_data = []
-                    for triplet in triplets:
-                        offset, length, char = triplet.strip("()").split(",")
-                        encoded_data.append((int(offset), int(length), char.strip("'")))
-
-                    result = lz77_decode(encoded_data)
-                    print(f"\nDekodiert: {result}")
-                except Exception as e:
-                    print(f"Fehler: {str(e)}")
-
-            pause()
-
-        elif choice == "0":
-            current_menu = "main"
-
 
 def rsa_menu():
     global current_menu

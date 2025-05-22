@@ -13,8 +13,7 @@ TOOLS = [
         tool_base.ToolEntry(2, "Redundanz berechnen", tools_entropy_compression.RedundanzTool),
         tool_base.ToolEntry(3, "Huffman-Code erstellen", tools_entropy_compression.HuffmanTool),
         tool_base.ToolEntry(4, "Lauflängenkodierung (RLE)", tools_entropy_compression.RLETool),
-        tool_base.ToolEntry(5, "Lempel-Ziv LZ78", tools_entropy_compression.LZ78Tool),
-        tool_base.ToolEntry(6, "Lempel-Ziv LZ77", tools_entropy_compression.LZ77Tool),
+        tool_base.ToolEntry(5, "Lempel-Ziv LZW", tools_entropy_compression.LZW),
     ]),
     
     tool_base.ToolGroup(2, "RSA", [

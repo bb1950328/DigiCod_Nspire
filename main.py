@@ -7,6 +7,7 @@ import channel_model
 import tools_binary_conversion
 
 
+
 TOOLS = [
     tool_base.ToolGroup(1, "Entropie und Kompression", [
         tool_base.ToolEntry(1, "Entropie berechnen", tools_entropy_compression.EntropyTool),
@@ -15,30 +16,28 @@ TOOLS = [
         tool_base.ToolEntry(4, "Lauflängenkodierung (RLE)", tools_entropy_compression.RLETool),
         tool_base.ToolEntry(5, "Lempel-Ziv LZW", tools_entropy_compression.LZW),
     ]),
-    
+
     tool_base.ToolGroup(2, "RSA", [
-        tool_base.ToolEntry(1, "Schlüsselpaar erzeugen", tools_rsa.KeyGenerationTool),
-        tool_base.ToolEntry(2, "Verschlüsseln", tools_rsa.EncryptionTool),
-        tool_base.ToolEntry(3, "Entschlüsseln", tools_rsa.DecryptionTool),
+        tool_base.ToolEntry(1, "RSA", tools_rsa.RSA),
     ]),
-    
+
     tool_base.ToolGroup(3, "Kanalcodierung", [
         tool_base.ToolEntry(1, "Hamming-Distanz", tools_channel_coding.HammingDistanceTool),
         tool_base.ToolEntry(2, "Syndrom berechnen", tools_channel_coding.SyndromeTool),
         tool_base.ToolEntry(3, "CRC prüfen", tools_channel_coding.CRCCheckTool),
         tool_base.ToolEntry(4, "CRC berechnen", tools_channel_coding.CRCCalculationTool),
     ]),
-    
+
     tool_base.ToolGroup(4, "Faltungscode", [
         tool_base.ToolEntry(1, "Faltungskodierung", tools_convolutional_code.ConvolutionalEncodeTool),
         tool_base.ToolEntry(2, "Viterbi-Dekodierung", tools_convolutional_code.ViterbiDecodeTool),
     ]),
-    
+
     tool_base.ToolGroup(5, "Kanalmodell", [
         tool_base.ToolEntry(1, "Transinformation", channel_model.TransinformationTool),
         tool_base.ToolEntry(2, "Maximum-Likelihood", channel_model.MaximumLikelihoodTool),
     ]),
-    
+
     tool_base.ToolGroup(6, "Binärumrechnung", [
         tool_base.ToolEntry(1, "Binär → Dezimal", tools_binary_conversion.BinToDec),
         tool_base.ToolEntry(2, "Dezimal → Binär", tools_binary_conversion.DecToBin),
@@ -49,7 +48,6 @@ TOOLS = [
         tool_base.ToolEntry(7, "IEEE-754 analysieren", tools_binary_conversion.AnalyzeIEEE754),
     ]),
 ]
-
 def find_tool_by_path(path: list, tools: list):
     current_tools = tools
     current = None

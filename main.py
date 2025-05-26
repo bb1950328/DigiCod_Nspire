@@ -22,10 +22,19 @@ TOOLS = [
     ]),
 
     tool_base.ToolGroup(3, "Kanalcodierung", [
-        tool_base.ToolEntry(1, "Hamming-Distanz", tools_channel_coding.HammingDistanceTool),
-        tool_base.ToolEntry(2, "Syndrom berechnen", tools_channel_coding.SyndromeTool),
-        tool_base.ToolEntry(3, "CRC prüfen", tools_channel_coding.CRCCheckTool),
-        tool_base.ToolEntry(4, "CRC berechnen", tools_channel_coding.CRCCalculationTool),
+        tool_base.ToolEntry(1, "Blockcode: Analyse",tools_channel_coding.ComprehensiveCodeAnalysisTool),
+        tool_base.ToolEntry(2, "Blockcode: Eigenschaften",tools_channel_coding.CodePropertiesAnalysisTool),
+        tool_base.ToolEntry(3, "Prüfmatrix H:", tools_channel_coding.ParityMatrixTool),
+        tool_base.ToolEntry(4, "Fehlersyndrom S:",tools_channel_coding.ErrorSyndromeTool),
+        tool_base.ToolEntry(5, "Zyklischer Code: g(x) zu Matrix",tools_channel_coding.CyclicCodeAnalysisTool),
+        tool_base.ToolEntry(6, "Zyklischer Code: mit g(x) codieren",tools_channel_coding.SystematicEncodingTool),
+        tool_base.ToolEntry(7, "CRC: Prüfbits mit g(x) berechnen & Codewort erstellen",tools_channel_coding.CRCCalculationTool),
+        tool_base.ToolEntry(8, "CRC: Empfangenes Wort mit g(x) prüfen", tools_channel_coding.CRCCheckTool),
+        tool_base.ToolEntry(9, "Simulation: Schieberegister für g(x)", tools_channel_coding.ShiftRegisterTool),
+        tool_base.ToolEntry(10, "Hilfswerkzeug: Polynomdivision in GF(2)", tools_channel_coding.PolynomialDivisionTool),
+        tool_base.ToolEntry(11, "Hilfswerkzeug: Hamming-Distanz berechnen", tools_channel_coding.HammingDistanceTool),
+        tool_base.ToolEntry(12, "Analyse: Code-Parameter & Dichtgepacktheit",tools_channel_coding.CodeParametersAndBoundsTool),  # Neuer/Angepasster Eintrag
+
     ]),
 
     tool_base.ToolGroup(4, "Faltungscode", [
@@ -36,6 +45,11 @@ TOOLS = [
     tool_base.ToolGroup(5, "Kanalmodell", [
         tool_base.ToolEntry(1, "Transinformation", channel_model.TransinformationTool),
         tool_base.ToolEntry(2, "Maximum-Likelihood", channel_model.MaximumLikelihoodTool),
+        tool_base.ToolEntry(3, "Entropie berechnen", channel_model.EntropyCalculationTool),
+        tool_base.ToolEntry(4, "Binärer symmetrischer Kanal", channel_model.BinarySymmetricChannelTool),
+        tool_base.ToolEntry(5, "Kanalmatrix bestimmen", channel_model.ChannelMatrixDeterminationTool),
+        tool_base.ToolEntry(6, "Kanaltyp analysieren", channel_model.ChannelTypeAnalysisTool),
+        tool_base.ToolEntry(7, "Vollständige Kanalanalyse", channel_model.ComprehensiveChannelAnalysisTool),
     ]),
 
     tool_base.ToolGroup(6, "Binärumrechnung", [

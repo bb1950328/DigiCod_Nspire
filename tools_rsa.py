@@ -34,10 +34,10 @@ class RSA(Tool):
         Erweiterte euklidische Algorithmus mit detaillierter Tabelle
         Gibt Tabelle für Prüfungsdarstellung zurück
         """
-        print(f"\n==== Erweiterter Euklidischer Algorithmus: {a} und {b} ====")
+        print("\n==== Erweiterter Euklidischer Algorithmus: {} und {} ====".format(a, b))
 
         # Tabellenkopf
-        print(f"{'a':<8} {'b':<8} {'q':<8} {'r':<8} {'x':<8} {'y':<8}")
+        print("{:<8} {:<8} {:<8} {:<8} {:<8} {:<8}".format('a', 'b', 'q', 'r', 'x', 'y'))
         print("-" * 50)
 
         # Initialisierung
@@ -48,29 +48,34 @@ class RSA(Tool):
 
         # Erste Zeile
         table.append([a, b, 0, a, 1, 0])
-        print(f"{a:<8} {b:<8} {0:<8} {a:<8} {1:<8} {0:<8}")
+        print("{:<8} {:<8} {:<8} {:<8} {:<8} {:<8}".format(a, b, 0, a, 1, 0))
 
         while r != 0:
-            q = old_r // r
-            old_r, r = r, old_r - q * r
-            old_s, s = s, old_s - q * s
-            old_t, t = t, old_t - q * t
+            q_val = old_r // r  # q is already used as a variable name for a prime factor
+            new_r = old_r - q_val * r
+            old_r, r = r, new_r
+            new_s = old_s - q_val * s
+            old_s, s = s, new_s
+            new_t = old_t - q_val * t
+            old_t, t = t, new_t
 
-            table.append([old_r, r, q, old_r - q * r, old_s, old_t])
-            print(f"{old_r:<8} {r:<8} {q:<8} {old_r - q * r:<8} {old_s:<8} {old_t:<8}")
+            # Use original r for table display before it's updated
+            table.append([old_r, r, q_val, old_r - q_val * r, old_s, old_t]) # r was already new_r here
+            print("{:<8} {:<8} {:<8} {:<8} {:<8} {:<8}".format(r if r != new_r else old_r, new_r, q_val, new_r, old_s, old_t))
+
 
         gcd = old_r
         x, y = old_s, old_t
 
-        print(f"\nErgebnis: ggT({a}, {b}) = {gcd}")
-        print(f"Koeffizienten: {a} * {x} + {b} * {y} = {gcd}")
-        print(f"Verifikation: {a} * {x} + {b} * {y} = {a * x + b * y}")
+        print("\nErgebnis: ggT({}, {}) = {}".format(a, b, gcd))
+        print("Koeffizienten: {} * {} + {} * {} = {}".format(a, x, b, y, gcd))
+        print("Verifikation: {} * {} + {} * {} = {}".format(a, x, b, y, a * x + b * y))
 
         # Modulares Inverses falls ggT = 1
         if gcd == 1:
-            mod_inv = x % b if x % b > 0 else x % b + b
-            print(f"Modulares Inverses von {a} mod {b} = {mod_inv}")
-            print(f"Verifikation: {a} * {mod_inv} mod {b} = {(a * mod_inv) % b}")
+            mod_inv = x % b if x % b >= 0 else (x % b + b) # ensure positive result
+            print("Modulares Inverses von {} mod {} = {}".format(a, b, mod_inv))
+            print("Verifikation: {} * {} mod {} = {}".format(a, mod_inv, b, (a * mod_inv) % b))
             return gcd, x, y, mod_inv
 
         return gcd, x, y, None
@@ -79,33 +84,33 @@ class RSA(Tool):
         """
         Modulare Exponentiation mit Zwischenschritten
         """
-        print(f"\n==== Modulare Exponentiation: {base}^{exponent} mod {modulus} ====")
+        print("\n==== Modulare Exponentiation: {}^{} mod {} ====".format(base, exponent, modulus))
 
         if exponent == 0:
             return 1
 
         # Binärdarstellung des Exponenten
         binary = bin(exponent)[2:]
-        print(f"Exponent {exponent} in binär: {binary}")
+        print("Exponent {} in binär: {}".format(exponent, binary))
 
         result = 1
         base_power = base % modulus
 
-        print(f"\n{'Bit':<4} {'Potenz':<10} {'Zwischenergebnis':<15} {'Neues Ergebnis':<15}")
+        print("\n{:<4} {:<10} {:<15} {:<15}".format('Bit', 'Potenz', 'Zwischenergebnis', 'Neues Ergebnis'))
         print("-" * 55)
 
         for i, bit in enumerate(reversed(binary)):
             if bit == '1':
                 new_result = (result * base_power) % modulus
-                print(f"{bit:<4} {base}^{2 ** i:<9} {result} * {base_power:<12} {new_result}")
+                print("{:<4} {}^{:<9} {} * {:<12} {}".format(bit, base, 2 ** i, result, base_power, new_result))
                 result = new_result
             else:
-                print(f"{bit:<4} {base}^{2 ** i:<9} {'(ignoriert)':<12} {result}")
+                print("{:<4} {}^{:<9} {:<12} {}".format(bit, base, 2 ** i, '(ignoriert)', result))
 
             if i < len(binary) - 1:
                 base_power = (base_power * base_power) % modulus
 
-        print(f"\nErgebnis: {base}^{exponent} mod {modulus} = {result}")
+        print("\nErgebnis: {}^{} mod {} = {}".format(base, exponent, modulus, result))
         return result
 
     def comprehensive_rsa_analysis(self, **kwargs):
@@ -126,8 +131,8 @@ class RSA(Tool):
         print("=" * 60)
 
         # Parameter extrahieren
-        p = kwargs.get('p')
-        q = kwargs.get('q')
+        p_param = kwargs.get('p') # Renamed to avoid conflict with loop variable p
+        q_param = kwargs.get('q') # Renamed to avoid conflict with loop variable q
         n = kwargs.get('n')
         e = kwargs.get('e')
         d = kwargs.get('d')
@@ -138,25 +143,25 @@ class RSA(Tool):
         print("\n1. GEGEBENE PARAMETER:")
         for param, value in kwargs.items():
             if value is not None:
-                print(f"   {param} = {value}")
+                print("   {} = {}".format(param, value))
 
         # Schritt 1: Bestimme p und q
         print("\n2. PRIMZAHLEN p UND q:")
-        if p is not None and q is not None:
-            print(f"   Gegeben: p = {p}, q = {q}")
+        if p_param is not None and q_param is not None:
+            print("   Gegeben: p = {}, q = {}".format(p_param, q_param))
             # Verifikation
-            if not self.is_prime(p):
-                print(f"   WARNUNG: p = {p} ist keine Primzahl!")
-            if not self.is_prime(q):
-                print(f"   WARNUNG: q = {q} ist keine Primzahl!")
+            if not self.is_prime(p_param):
+                print("   WARNUNG: p = {} ist keine Primzahl!".format(p_param))
+            if not self.is_prime(q_param):
+                print("   WARNUNG: q = {} ist keine Primzahl!".format(q_param))
         elif n is not None:
-            print(f"   Faktorisierung von n = {n}:")
-            p, q = self.factorize_n(n)
-            if p and q:
-                print(f"   Gefunden: p = {p}, q = {q}")
-                print(f"   Verifikation: {p} * {q} = {p * q}")
+            print("   Faktorisierung von n = {}:".format(n))
+            p_param, q_param = self.factorize_n(n)
+            if p_param and q_param:
+                print("   Gefunden: p = {}, q = {}".format(p_param, q_param))
+                print("   Verifikation: {} * {} = {}".format(p_param, q_param, p_param * q_param))
             else:
-                print(f"   FEHLER: Konnte n = {n} nicht faktorisieren!")
+                print("   FEHLER: Konnte n = {} nicht faktorisieren!".format(n))
                 return
         else:
             print("   FEHLER: Weder (p,q) noch n gegeben!")
@@ -165,42 +170,42 @@ class RSA(Tool):
         # Schritt 2: Berechne n
         print("\n3. MODUL n:")
         if n is None:
-            n = p * q
-            print(f"   Berechnet: n = p * q = {p} * {q} = {n}")
+            n = p_param * q_param
+            print("   Berechnet: n = p * q = {} * {} = {}".format(p_param, q_param, n))
         else:
-            print(f"   Gegeben: n = {n}")
-            if p and q and p * q != n:
-                print(f"   WARNUNG: p * q = {p * q} ≠ n = {n}")
+            print("   Gegeben: n = {}".format(n))
+            if p_param and q_param and p_param * q_param != n:
+                print("   WARNUNG: p * q = {} != n = {}".format(p_param * q_param, n))
 
         # Schritt 3: Berechne φ(n)
         print("\n4. EULER-FUNKTION φ(n):")
         if phi is None:
-            phi = (p - 1) * (q - 1)
-            print(f"   Berechnet: φ(n) = (p-1) * (q-1) = ({p}-1) * ({q}-1) = {p - 1} * {q - 1} = {phi}")
+            phi = (p_param - 1) * (q_param - 1)
+            print("   Berechnet: φ(n) = (p-1) * (q-1) = ({}-1) * ({}-1) = {} * {} = {}".format(p_param, q_param, p_param - 1, q_param - 1, phi))
         else:
-            print(f"   Gegeben: φ(n) = {phi}")
-            expected_phi = (p - 1) * (q - 1)
+            print("   Gegeben: φ(n) = {}".format(phi))
+            expected_phi = (p_param - 1) * (q_param - 1)
             if phi != expected_phi:
-                print(f"   WARNUNG: Erwartet φ(n) = {expected_phi}, aber φ(n) = {phi} gegeben")
+                print("   WARNUNG: Erwartet φ(n) = {}, aber φ(n) = {} gegeben".format(expected_phi, phi))
 
         # Schritt 4: Bestimme e und d
         print("\n5. ÖFFENTLICHER UND PRIVATER EXPONENT:")
 
         if e is not None and d is None:
-            print(f"   Gegeben: e = {e}")
-            print(f"   Berechne d mit erweitertem euklidischem Algorithmus:")
+            print("   Gegeben: e = {}".format(e))
+            print("   Berechne d mit erweitertem euklidischem Algorithmus:")
 
             # Prüfe ob ggT(e, φ(n)) = 1
             gcd_val = math.gcd(e, phi)
             if gcd_val != 1:
-                print(f"   FEHLER: ggT(e, φ(n)) = ggT({e}, {phi}) = {gcd_val} ≠ 1")
-                print(f"   e und φ(n) sind nicht teilerfremd!")
+                print("   FEHLER: ggT(e, φ(n)) = ggT({}, {}) = {} != 1".format(e, phi, gcd_val))
+                print("   e und φ(n) sind nicht teilerfremd!")
                 return
 
-            gcd_val, x, y, d = self.extended_gcd_table(e, phi)
+            gcd_val, x_val, y_val, d = self.extended_gcd_table(e, phi) # Renamed x, y to avoid conflict
 
         elif d is not None and e is None:
-            print(f"   Gegeben: d = {d}")
+            print("   Gegeben: d = {}".format(d))
             print("   HINWEIS: e kann nicht eindeutig aus d berechnet werden")
             print("   Standardwert e = 65537 wird angenommen (falls nicht anders spezifiziert)")
             e = 65537
@@ -210,15 +215,15 @@ class RSA(Tool):
                     if math.gcd(test_e, phi) == 1:
                         e = test_e
                         break
-            print(f"   Verwende: e = {e}")
+            print("   Verwende: e = {}".format(e))
 
         elif e is not None and d is not None:
-            print(f"   Gegeben: e = {e}, d = {d}")
+            print("   Gegeben: e = {}, d = {}".format(e, d))
             # Verifikation
             verification = (e * d) % phi
-            print(f"   Verifikation: e * d mod φ(n) = {e} * {d} mod {phi} = {verification}")
+            print("   Verifikation: e * d mod φ(n) = {} * {} mod {} = {}".format(e, d, phi, verification))
             if verification != 1:
-                print(f"   WARNUNG: e * d mod φ(n) = {verification} ≠ 1")
+                print("   WARNUNG: e * d mod φ(n) = {} != 1".format(verification))
 
         else:
             print("   Weder e noch d gegeben. Verwende Standard e = 65537")
@@ -228,43 +233,43 @@ class RSA(Tool):
                     if math.gcd(test_e, phi) == 1:
                         e = test_e
                         break
-            print(f"   Gewählt: e = {e}")
-            gcd_val, x, y, d = self.extended_gcd_table(e, phi)
+            print("   Gewählt: e = {}".format(e))
+            gcd_val, x_val, y_val, d = self.extended_gcd_table(e, phi) # Renamed x, y
 
         # Schritt 5: Zusammenfassung der Schlüssel
         print("\n6. SCHLÜSSEL:")
-        print(f"   Öffentlicher Schlüssel:  (e, n) = ({e}, {n})")
-        print(f"   Privater Schlüssel:      (d, n) = ({d}, {n})")
+        print("   Öffentlicher Schlüssel:  (e, n) = ({}, {})".format(e, n))
+        print("   Privater Schlüssel:      (d, n) = ({}, {})".format(d, n))
 
         # Schritt 6: Verschlüsselung (falls m gegeben)
         if m is not None:
-            print(f"\n7. VERSCHLÜSSELUNG von m = {m}:")
+            print("\n7. VERSCHLÜSSELUNG von m = {}:".format(m))
             if m >= n:
-                print(f"   FEHLER: m = {m} ≥ n = {n}")
+                print("   FEHLER: m = {} >= n = {}".format(m, n))
                 print("   Die Nachricht ist zu groß für den Modul!")
             else:
                 c_calculated = self.mod_exp_table(m, e, n)
                 if c is not None and c != c_calculated:
-                    print(f"   WARNUNG: Berechnetes c = {c_calculated}, aber c = {c} gegeben")
+                    print("   WARNUNG: Berechnetes c = {}, aber c = {} gegeben".format(c_calculated, c))
                 c = c_calculated
 
         # Schritt 7: Entschlüsselung (falls c gegeben)
         if c is not None:
-            print(f"\n8. ENTSCHLÜSSELUNG von c = {c}:")
+            print("\n8. ENTSCHLÜSSELUNG von c = {}:".format(c))
             m_calculated = self.mod_exp_table(c, d, n)
             if m is not None and m != m_calculated:
-                print(f"   WARNUNG: Berechnetes m = {m_calculated}, aber m = {m} gegeben")
+                print("   WARNUNG: Berechnetes m = {}, aber m = {} gegeben".format(m_calculated, m))
             m = m_calculated
 
         # Schritt 8: Vollständige Verifikation
-        print(f"\n9. VOLLSTÄNDIGE VERIFIKATION:")
+        print("\n9. VOLLSTÄNDIGE VERIFIKATION:")
         if m is not None and c is not None:
             # Ver- und Entschlüsselung testen
             c_verify = pow(m, e, n)
             m_verify = pow(c, d, n)
 
-            print(f"   Original → Verschlüsselt → Entschlüsselt:")
-            print(f"   {m} → {c_verify} → {m_verify}")
+            print("   Original → Verschlüsselt → Entschlüsselt:")
+            print("   {} → {} → {}".format(m, c_verify, m_verify))
 
             if c_verify == c and m_verify == m:
                 print("   ✓ Verifikation erfolgreich!")
@@ -272,20 +277,20 @@ class RSA(Tool):
                 print("   ✗ Verifikation fehlgeschlagen!")
 
         # Zusammenfassung aller Ergebnisse
-        print(f"\n10. ZUSAMMENFASSUNG ALLER PARAMETER:")
-        print(f"    p = {p}")
-        print(f"    q = {q}")
-        print(f"    n = {n}")
-        print(f"    φ(n) = {phi}")
-        print(f"    e = {e}")
-        print(f"    d = {d}")
+        print("\n10. ZUSAMMENFASSUNG ALLER PARAMETER:")
+        print("    p = {}".format(p_param))
+        print("    q = {}".format(q_param))
+        print("    n = {}".format(n))
+        print("    φ(n) = {}".format(phi))
+        print("    e = {}".format(e))
+        print("    d = {}".format(d))
         if m is not None:
-            print(f"    m = {m}")
+            print("    m = {}".format(m))
         if c is not None:
-            print(f"    c = {c}")
+            print("    c = {}".format(c))
 
         return {
-            'p': p, 'q': q, 'n': n, 'phi': phi,
+            'p': p_param, 'q': q_param, 'n': n, 'phi': phi,
             'e': e, 'd': d, 'm': m, 'c': c
         }
 
@@ -353,7 +358,7 @@ class RSA(Tool):
                 print("=" * 60)
 
             except Exception as e:
-                print(f"\nFEHLER bei der Analyse: {str(e)}")
+                print("\nFEHLER bei der Analyse: {}".format(str(e)))
                 import traceback
                 traceback.print_exc()
 
@@ -369,11 +374,11 @@ class RSA(Tool):
                 continue
             elif choice == "2":
                 try:
-                    a = int(input("Erste Zahl a: "))
-                    b = int(input("Zweite Zahl b: "))
-                    rsa.extended_gcd_table(a, b)
+                    a_val = int(input("Erste Zahl a: ")) # Renamed a to avoid conflict
+                    b_val = int(input("Zweite Zahl b: ")) # Renamed b to avoid conflict
+                    rsa.extended_gcd_table(a_val, b_val)
                 except Exception as e:
-                    print(f"Fehler: {e}")
+                    print("Fehler: {}".format(e))
                 input("\nDrücke Enter zum Fortfahren...")
             elif choice == "3":
                 try:
@@ -382,7 +387,7 @@ class RSA(Tool):
                     modulus = int(input("Modul: "))
                     rsa.mod_exp_table(base, exponent, modulus)
                 except Exception as e:
-                    print(f"Fehler: {e}")
+                    print("Fehler: {}".format(e))
                 input("\nDrücke Enter zum Fortfahren...")
             elif choice == "0":
                 current_menu = "main"

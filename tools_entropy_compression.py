@@ -11,6 +11,8 @@ class EntropyTool(Tool):
         print("==== Entropie berechnen ====")
         try:
             n = int(input("Anzahl der Symbole: "))
+            if n <= 0:
+                raise ValueError("Die Anzahl der Symbole muss positiv sein")
             probs = []
             for i in range(n):
                 p = float(input("Wahrscheinlichkeit für Symbol {}: ".format(i + 1)))
@@ -402,7 +404,7 @@ class LZW(Tool):
             print("Ungültige Eingabe '{}' - verwende Standard (Ziffern 0-9)".format(choice))
             return [str(i) for i in range(10)]  # Default
 
-    def run(self):
+    def run(self) -> None:
         """
         Hauptmenü für LZW-Funktionen
         """
@@ -415,7 +417,7 @@ class LZW(Tool):
         subchoice = input("\nWähle eine Option: ").strip()
 
 
-        if subchoice == "1":
+        if  subchoice == "1":
             # Dekodieren
             try:
                 print("Eingabe (LZW-Codes durch Leerzeichen getrennt):")

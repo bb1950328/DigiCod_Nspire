@@ -1060,9 +1060,11 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
 
         errors, warnings = self.validate_generator_polynomial(generator_poly_str)
         if errors:
-            for error in errors: print(f"❌ FEHLER: {error}")
+            for error in errors:
+                print("❌ FEHLER: {}".format(error))
             return None
-        for warning in warnings: print(f"⚠️ WARNUNG: {warning}")
+        for warning in warnings:
+            print("⚠️ WARNUNG: {}".format(warning))
 
         g_coeffs = [int(b) for b in generator_poly_str]
 
@@ -1070,8 +1072,8 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
         # g(x) = g_k * x^k + ... + g_1 * x^1 + g_0 * x^0. g_k ist immer 1.
         # Länge von g_coeffs ist k+1. Grad k ist len(g_coeffs) - 1.
         num_control_bits_k = len(g_coeffs) - 1
-        print(f"Generatorpolynom g(x): {generator_poly_str}")
-        print(f"Grad des Generatorpolynoms (Anzahl Kontrollstellen): k = {num_control_bits_k}")
+        print("Generatorpolynom g(x): {}".format(generator_poly_str))
+        print("Grad des Generatorpolynoms (Anzahl Kontrollstellen): k = {}".format(num_control_bits_k))
 
         # Bestimme Codelänge n
         # Für einen (zyklischen) Hamming-Code, erzeugt von einem primitiven Polynom vom Grad k,
@@ -1083,19 +1085,20 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             else:  # Sollte durch Validierung abgefangen werden
                 print("❌ FEHLER: Grad des Generatorpolynoms muss > 0 sein.")
                 return None
-            print(f"Codelänge (angenommen für Hamming-Code): n = 2^k - 1 = {n}")
+            print("Codelänge (angenommen für Hamming-Code): n = 2^k - 1 = {}".format(n))
         else:
             n = code_length_n
             if n <= num_control_bits_k:
-                print(f"❌ FEHLER: Codelänge n ({n}) muss größer sein als Grad k ({num_control_bits_k}).")
+                print("❌ FEHLER: Codelänge n ({}) muss größer sein als Grad k ({}).".format(n, num_control_bits_k))
                 return None
-            print(f"Codelänge (gegeben): n = {n}")
+            print("Codelänge (gegeben): n = {}".format(n))
 
         num_message_bits_m = n - num_control_bits_k
-        print(f"Anzahl Nachrichtenstellen: m = n - k = {num_message_bits_m}")
+        print("Anzahl Nachrichtenstellen: m = n - k = {}".format(num_message_bits_m))
 
         if n <= 0 or num_message_bits_m <= 0:
-            print(f"❌ FEHLER: Ungültige Code-Parameter (n={n}, m={num_message_bits_m}, k={num_control_bits_k}).")
+            print("❌ FEHLER: Ungültige Code-Parameter (n={}, m={}, k={}).".format(n, num_message_bits_m,
+                                                                                  num_control_bits_k))
             return None
 
         # Initialisiere Prüfmatrix H (k Zeilen, n Spalten)
@@ -1120,19 +1123,24 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             if len(syndrome_str) > num_control_bits_k:  # Sollte nicht passieren wenn division korrekt ist
                 syndrome_str = syndrome_str[-num_control_bits_k:]
 
-            print(
-                f"  Fehler an Position x_{j + 1} (Polynom x^{n - 1 - j}): e_{j + 1}(x) = {error_poly_str}, Syndrom s_{j + 1}(x) = {syndrome_str}")
-
+            print("  Fehler an Position x_{} (Polynom x^{}): e_{}(x) = {}, Syndrom s_{}(x) = {}".format(
+                j + 1,  # für x_{j+1}
+                n - 1 - j,  # für x^{n-1-j}
+                j + 1,  # für e_{j+1}(x)
+                error_poly_str,  # für das erste {} nach e_{...}(x) =
+                j + 1,  # für s_{j+1}(x) <--- DIESES HAT GEFEHLT
+                syndrome_str  # für das {} nach s_{...}(x) =
+            ))
             # Das Syndrom (als k-Bit Vektor) ist die (j+1)-te Spalte von H
             for i in range(num_control_bits_k):
                 H[i][j] = int(syndrome_str[i])
 
         print("\n--- Resultierende Prüfmatrix H ---")
-        header = "    " + " ".join([f"x{i + 1:<2}" for i in range(n)])
+        header = "    " + " ".join(["x{:<2}".format(i + 1) for i in range(n)])
         print(header)
         print("    " + "-" * (len(header) - 4))
         for i, row in enumerate(H):
-            row_str = "h{:<2}: ".format(i + 1) + " ".join([f"{bit:<2}" for bit in row])
+            row_str = "h{:<2}: ".format(i + 1) + " ".join(["{:<2}".format(bit) for bit in row])
             print(row_str)
 
         # Formatiere als Prüfgleichungen
@@ -1141,12 +1149,12 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             terms = []
             for j in range(n):
                 if H[i][j] == 1:
-                    terms.append(f"x{j + 1}")
+                    terms.append("x{}".format(j + 1))
             if terms:
                 equation = " + ".join(terms) + " = 0"
-                print(f"s{i + 1}: {equation}")
+                print("s{}: {}".format(i + 1, equation))
             else:
-                print(f"s{i + 1}: 0 = 0")  # Sollte nicht vorkommen für sinnvolle H
+                print("s{}: 0 = 0".format(i + 1))  # Sollte nicht vorkommen für sinnvolle H
 
         self._verify_H_matrix_properties(H, generator_poly_str, n, num_control_bits_k)
 
@@ -1172,7 +1180,8 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
         actual_n = len(H[0]) if H else 0
         if actual_n != n:
             print(
-                f"⚠️ Warnung: Erwartete Spaltenanzahl n={n} stimmt nicht mit tatsächlicher Spaltenanzahl {actual_n} der Matrix H überein.")
+                "⚠️ Warnung: Erwartete Spaltenanzahl n={} stimmt nicht mit tatsächlicher Spaltenanzahl {} der Matrix H überein.".format(
+                    n, actual_n))
             # Fahre fort mit actual_n für die Prüfungen, aber dies deutet auf ein Problem hin
 
         # Verwende die tatsächliche Anzahl der Spalten in der generierten Matrix H für die Schleife
@@ -1181,7 +1190,8 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             actual_k = len(H)
             if actual_k != k_ctrl_bits:
                 print(
-                    f"⚠️ Warnung: Erwartete Zeilenanzahl k_ctrl_bits={k_ctrl_bits} stimmt nicht mit tatsächlicher Zeilenanzahl {actual_k} der Matrix H überein.")
+                    "⚠️ Warnung: Erwartete Zeilenanzahl k_ctrl_bits={} stimmt nicht mit tatsächlicher Zeilenanzahl {} der Matrix H überein.".format(
+                        k_ctrl_bits, actual_k))
                 # Fahre fort mit actual_k für die Prüfungen
 
             is_zero_column = all(H[i][j] == 0 for i in range(actual_k))
@@ -1192,7 +1202,8 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             print("✅ Korrekt: Keine Nullspalten in H.")
         else:
             print(
-                f"❌ Warnung: {zero_columns_found} Nullspalten in H gefunden. (Ungültig für Hamming-Codes und fehlererkennende Codes)")
+                "❌ Warnung: {} Nullspalten in H gefunden. (Ungültig für Hamming-Codes und fehlererkennende Codes)".format(
+                    zero_columns_found))
 
         # Prüfe auf eindeutige Spalten (wichtig für Hamming-Codes zur 1-Bit-Fehlerkorrektur)
         columns_as_tuples = []
@@ -1210,11 +1221,11 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
 
                 duplicate_columns = {col: count for col, count in column_counts.items() if count > 1}
                 if duplicate_columns:
-                    print(
-                        f"❌ Warnung: Es gibt {len(duplicate_columns)} verschiedene Spaltenmuster, die mehrfach vorkommen:")
+                    print("❌ Warnung: Es gibt {} verschiedene Spaltenmuster, die mehrfach vorkommen:".format(
+                        len(duplicate_columns)))
                     for col_tuple, count in duplicate_columns.items():
                         col_str = "".join(map(str, col_tuple))
-                        print(f"    - Spaltenmuster ({col_str}) kommt {count}-mal vor.")
+                        print("    - Spaltenmuster ({}) kommt {}-mal vor.".format(col_str, count))
                 else:
                     print("❌ Warnung: Es gibt doppelte Spalten in H, aber Details konnten nicht ermittelt werden.")
         elif k_ctrl_bits > 0:  # Nur wenn k_ctrl_bits > 0 ist, sonst ist H leer und die obige Bedingung nicht erfüllt
@@ -1237,8 +1248,7 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
                     break
                 print("❌ Eingabe darf nicht leer sein.")
 
-
-            code_length_input_str = input("Spezifische totale Codelänge m+k eingeben? (Standard: 2^k-1 für Hamming): ").strip()
+            code_length_input_str = input("Spezifische Codelänge n eingeben? (Standard: 2^k-1 für Hamming): ").strip()
             code_length_n_arg = None
             if code_length_input_str:
                 try:
@@ -1257,7 +1267,7 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
         except KeyboardInterrupt:
             print("\n❌ Analyse abgebrochen.")
         except Exception as e:
-            print(f"❌ Ein unerwarteter Fehler ist aufgetreten: {e}")
+            print("❌ Ein unerwarteter Fehler ist aufgetreten: {}".format(e))
 
         input("\nDrücken Sie Enter zum Beenden...")
 
@@ -1745,51 +1755,50 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
 
             # 1. Codelänge n
             n_codelength = k_info + k_control
-            print(f"\n--- Berechnete Code-Parameter ---")
-            print(f"Codelänge (n = k_info + k_control): {n_codelength}")
+            print("\n--- Berechnete Code-Parameter ---")
+            print("Codelänge (n = k_info + k_control): {}".format(n_codelength))
 
             # 2. Anzahl gültige Codewörter
             num_valid_codewords = 2 ** k_info
-            print(f"Anzahl gültige Codewörter (2^k_info): {int(num_valid_codewords)}")  # [cite: 264]
+            print("Anzahl gültige Codewörter (2^k_info): {}".format(int(num_valid_codewords)))  #
 
             # 3. Anzahl mögliche Codewörter
             num_possible_codewords = 2 ** n_codelength
-            print(f"Anzahl mögliche Codewörter (2^n): {int(num_possible_codewords)}")  # [cite: 264]
+            print("Anzahl mögliche Codewörter (2^n): {}".format(int(num_possible_codewords)))  #
 
             # 4. Sicher erkennbare Fehler e*
             e_star = h_dist - 1
-            print(f"Sicher erkennbare Fehler (e* = h - 1): {e_star}")  # [cite: 264]
+            print("Sicher erkennbare Fehler (e* = h - 1): {}".format(e_star))  #
 
             # 5. Sicher korrigierbare Fehler e
             e_corr = (h_dist - 1) // 2
 
-            print(f"Sicher korrigierbare Fehler (e = floor((h-1)/2)): {e_corr}")  # [cite: 264]
+            print("Sicher korrigierbare Fehler (e = floor((h-1)/2)): {}".format(e_corr))
 
             # 6. Prüfung auf Dichtgepacktheit
-            print(f"\n--- Prüfung auf Dichtgepacktheit (Perfekter Code) ---")
+            print("\n--- Prüfung auf Dichtgepacktheit (Perfekter Code) ---")
             if e_corr < 0:
-                print(
-                    "Hinweis: Mit e < 0 ist keine Fehlerkorrektur möglich, Prüfung auf Dichtgepacktheit nicht sinnvoll für e < 0.")
+                print("\n--- Prüfung auf Dichtgepacktheit (Perfekter Code) ---")
                 is_perfect = False
             else:
                 sum_combinations = 0
                 print(
-                    f"Berechnung der Summe der Binomialkoeffizienten S = Σ C(n, i) für i von 0 bis e_corr (e_corr={e_corr}):")
+                    "Berechnung der Summe der Binomialkoeffizienten S = Σ C(n, i) für i von 0 bis e_corr (e_corr={}):".format(
+                        e_corr))
                 for i in range(e_corr + 1):
                     comb = self.combinations(n_codelength, i)
-                    print(f"  C({n_codelength}, {i}) = {comb}")
+                    print("  C({}, {}) = {}".format(n_codelength, i, comb))
                     sum_combinations += comb
-                print(f"S = {sum_combinations}")
-
+                print("S = {}".format(sum_combinations))
 
                 val_for_perfection = 2 ** (n_codelength - k_info)
 
-                print(f"\nPrüfung der Hamming-Grenze:")
-                print(
-                    f"  Linke Seite (Anzahl Wörter in allen Kugeln): 2^k_info * S = {int(num_valid_codewords)} * {sum_combinations} = {int(num_valid_codewords * sum_combinations)}")
-                print(f"  Rechte Seite (Gesamtzahl Wörter im Raum): 2^n = {int(num_possible_codewords)}")
-                print(
-                    f"  Vereinfachte Prüfung: S = {sum_combinations}, Sollwert für Perfektion (2^(n-k_info)): {val_for_perfection}")
+                print("\nPrüfung der Hamming-Grenze:")
+                print("  Linke Seite (Anzahl Wörter in allen Kugeln): 2^k_info * S = {} * {} = {}".format(
+                    int(num_valid_codewords), sum_combinations, int(num_valid_codewords * sum_combinations)))
+                print("  Rechte Seite (Gesamtzahl Wörter im Raum): 2^n = {}".format(int(num_possible_codewords)))
+                print("  Vereinfachte Prüfung: S = {}, Sollwert für Perfektion (2^(n-k_info)): {}".format(
+                    sum_combinations, val_for_perfection))
 
                 is_perfect = False
                 # Toleranz für Fließkommavergleiche
@@ -1799,19 +1808,18 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
                     is_perfect = (sum_combinations == val_for_perfection)
 
                 if is_perfect:
-                    print(f"\n✅ Ergebnis: Der Code ist DICHTGEPACKT (PERFEKT).")
-                    print(f"   Die Bedingung 2^k_info * Σ C(n,i) = 2^n ist erfüllt.")
+                    print("\n✅ Ergebnis: Der Code ist DICHTGEPACKT (PERFEKT).")
+                    print("   Die Bedingung 2^k_info * Σ C(n,i) = 2^n ist erfüllt.")
                 else:
-                    print(f"\n❌ Ergebnis: Der Code ist NICHT dichtgepackt.")
+                    print("\n❌ Ergebnis: Der Code ist NICHT dichtgepackt.")
                     if (num_valid_codewords * sum_combinations) > num_possible_codewords:
                         print(
                             "   Die Kugelpackungsschranke ist verletzt (2^k_info * S > 2^n). Dies sollte für gültige Codes nicht passieren.")
                     else:
-                        print("   Die Kugelpackungsschranke ist nicht mit Gleichheit erfüllt (2^k_info * S < 2^n).")
+                        print("\n❌ Ergebnis: Der Code ist NICHT dichtgepackt.")
 
         except ValueError as ve:
-            print(f"❌ Eingabefehler: {ve}")
+            print("❌ Eingabefehler: {}".format(ve))
         except Exception as e:
-            print(f"❌ Ein unerwarteter Fehler ist aufgetreten: {e}")
-
+            print("❌ Ein unerwarteter Fehler ist aufgetreten: {}".format(e))
         input("\nDrücke Enter zum Fortfahren...")  # Hinzugefügt

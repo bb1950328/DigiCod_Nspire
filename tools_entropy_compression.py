@@ -413,8 +413,19 @@ class LZW(Tool):
         print("2. Kodieren")
         print("0. Exit")
 
+        subchoice = input("\nWähle eine Option: ")
+        # DEBUG: Zeige was tatsächlich eingegeben wurde
+        print("DEBUG: Eingabe roh: '{}'".format(repr(subchoice)))
+        print("DEBUG: Eingabe Länge: {}".format(len(subchoice)))
 
-        subchoice = input("\nWähle eine Option: ").strip()
+        # Robust behandeln
+        subchoice = str(subchoice).strip()
+        print("DEBUG: Nach strip(): '{}'".format(repr(subchoice)))
+
+        # Explizite Vergleiche mit Debug
+        print("DEBUG: subchoice == '1'? {}".format(subchoice == "1"))
+        print("DEBUG: subchoice == '2'? {}".format(subchoice == "2"))
+        print("DEBUG: subchoice == '0'? {}".format(subchoice == "0"))
 
 
         if  subchoice == "1":

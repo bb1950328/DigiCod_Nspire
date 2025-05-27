@@ -1849,16 +1849,14 @@ class CodePropertiesAnalysisTool(BaseChannelCodingTool):
 
 class CodeParametersAndBoundsTool(BaseChannelCodingTool):
     """
-    Werkzeug zur Berechnung von Code-Parametern, Fehlererkennungs/-korrektur-
-    Fähigkeiten und zur Prüfung auf Dichtgepacktheit (Perfekter Code).
-    Nimmt Nachrichtenstellen, Kontrollstellen und Hammingdistanz als Eingabe.
+    Kompakte Version für Taschenrechner mit MicroPython 3.4
+    Berechnet Code-Parameter und prüft Dichtgepacktheit
     """
 
     def factorial(self, num):
-        """Berechnet die Fakultät einer Zahl (für MicroPython)."""
+        """Berechnet die Fakultät einer Zahl."""
         if num < 0:
-            # Dieser Fall sollte durch Eingabevalidierung von e verhindert werden
-            return 0  # Oder Fehler werfen
+            return 0
         if num == 0:
             return 1
         res = 1
@@ -1867,12 +1865,12 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
         return res
 
     def combinations(self, n_items, k_items):
-        """Berechnet den Binomialkoeffizienten C(n, k) (für MicroPython)."""
+        """Berechnet den Binomialkoeffizienten C(n, k)."""
         if k_items < 0 or k_items > n_items:
             return 0
         if k_items == 0 or k_items == n_items:
             return 1
-        if k_items > n_items // 2:  # Optimierung: C(n, k) == C(n, n-k)
+        if k_items > n_items // 2:
             k_items = n_items - k_items
 
         res = 1
@@ -1880,81 +1878,175 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
             res = res * (n_items - i) // (i + 1)
         return res
 
-    def run(self):
-        """Führt die Berechnungen und Prüfungen durch."""
-        print("\n=== CODE-PARAMETER, FEHLERKAPAZITÄT & DICHTGEPACKTHEIT PRÜFEN ===")
-        try:
-            k_info = self.safe_int_input("Anzahl Nachrichtenstellen (k bzw. m): ", min_val=1, max_val=100)
-            k_control = self.safe_int_input("Anzahl Kontrollstellen (r bzw. Prüfstellen): ", min_val=1, max_val=100)
-            h_dist = self.safe_int_input("Minimale Hamming-Distanz (h): ", min_val=1, max_val=(k_info + k_control))
+    def calculate_parameters(self, k_info, k_control, h_dist):
+        """Berechnet alle Parameter und gibt Dictionary zurück."""
+        n_codelength = k_info + k_control
+        num_valid_codewords = 2 ** k_info
+        num_possible_codewords = 2 ** n_codelength
+        e_star = h_dist - 1
+        e_corr = (h_dist - 1) // 2
 
-            # 1. Codelänge n
-            n_codelength = k_info + k_control
-            print("\n--- Berechnete Code-Parameter ---")
-            print("Codelänge (n = k_info + k_control): {}".format(n_codelength))
+        # Dichtgepacktheit prüfen
+        sum_combinations = 0
+        combination_details = []
 
-            # 2. Anzahl gültige Codewörter
-            num_valid_codewords = 2 ** k_info
-            print("Anzahl gültige Codewörter (2^k_info): {}".format(int(num_valid_codewords)))  #
+        if e_corr >= 0:
+            for i in range(e_corr + 1):
+                comb = self.combinations(n_codelength, i)
+                combination_details.append((i, comb))
+                sum_combinations += comb
 
-            # 3. Anzahl mögliche Codewörter
-            num_possible_codewords = 2 ** n_codelength
-            print("Anzahl mögliche Codewörter (2^n): {}".format(int(num_possible_codewords)))  #
+            val_for_perfection = 2 ** (n_codelength - k_info)
+            is_perfect = (sum_combinations == val_for_perfection)
+        else:
+            is_perfect = False
+            val_for_perfection = 0
 
-            # 4. Sicher erkennbare Fehler e*
-            e_star = h_dist - 1
-            print("Sicher erkennbare Fehler (e* = h - 1): {}".format(e_star))  #
+        return {
+            'n': n_codelength,
+            'valid_cw': num_valid_codewords,
+            'possible_cw': num_possible_codewords,
+            'e_star': e_star,
+            'e_corr': e_corr,
+            'sum_comb': sum_combinations,
+            'comb_details': combination_details,
+            'val_perfect': val_for_perfection,
+            'is_perfect': is_perfect
+        }
 
-            # 5. Sicher korrigierbare Fehler e
-            e_corr = (h_dist - 1) // 2
+    def show_summary(self, params):
+        """Zeigt kompakte Zusammenfassung."""
+        print("\n=== ERGEBNIS-ZUSAMMENFASSUNG ===")
+        print("n={}, Gueltige CW: {}, e*={}, e={}".format(
+            params['n'], params['valid_cw'], params['e_star'], params['e_corr']))
 
-            print("Sicher korrigierbare Fehler (e = floor((h-1)/2)): {}".format(e_corr))
+        if params['is_perfect']:
+            print("Status: DICHTGEPACKT (perfekt)")
+        else:
+            print("Status: NICHT dichtgepackt")
 
-            # 6. Prüfung auf Dichtgepacktheit
-            print("\n--- Prüfung auf Dichtgepacktheit (Perfekter Code) ---")
-            if e_corr < 0:
-                print("\n--- Prüfung auf Dichtgepacktheit (Perfekter Code) ---")
-                is_perfect = False
+        print("\nOptionen:")
+        print("1 - Details anzeigen")
+        print("2 - Dichtgepacktheits-Berechnung")
+        print("3 - Alle Kombinationen")
+        print("q - Zurueck zum Menu")
+
+    def show_details(self, params):
+        """Zeigt detaillierte Parameter."""
+        print("\n=== PARAMETER-DETAILS ===")
+        print("Codelaenge n: {}".format(params['n']))
+        print("Gueltige Codewoerter: {}".format(params['valid_cw']))
+        print("Moegliche Codewoerter: {}".format(params['possible_cw']))
+        print("Erkennbare Fehler e*: {}".format(params['e_star']))
+        print("Korrigierbare Fehler e: {}".format(params['e_corr']))
+        input("\nEnter fuer weiter...")
+
+    def show_perfectness_calc(self, params):
+        """Zeigt Dichtgepacktheits-Berechnung."""
+        print("\n=== DICHTGEPACKTHEITS-PRUEFUNG ===")
+        print("Summe Kombinationen S: {}".format(params['sum_comb']))
+        print("Sollwert 2^(n-k): {}".format(params['val_perfect']))
+        print("Bedingung S = 2^(n-k): {}".format(
+            "ERFUELLT" if params['is_perfect'] else "NICHT erfuellt"))
+
+        if not params['is_perfect']:
+            if params['sum_comb'] > params['val_perfect']:
+                print("FEHLER: S > 2^(n-k) - Code ungueltig!")
             else:
-                sum_combinations = 0
-                print(
-                    "Berechnung der Summe der Binomialkoeffizienten S = Σ C(n, i) für i von 0 bis e_corr (e_corr={}):".format(
-                        e_corr))
-                for i in range(e_corr + 1):
-                    comb = self.combinations(n_codelength, i)
-                    print("  C({}, {}) = {}".format(n_codelength, i, comb))
-                    sum_combinations += comb
-                print("S = {}".format(sum_combinations))
+                print("Code gueltig aber nicht optimal")
 
-                val_for_perfection = 2 ** (n_codelength - k_info)
+        input("\nEnter fuer weiter...")
 
-                print("\nPrüfung der Hamming-Grenze:")
-                print("  Linke Seite (Anzahl Wörter in allen Kugeln): 2^k_info * S = {} * {} = {}".format(
-                    int(num_valid_codewords), sum_combinations, int(num_valid_codewords * sum_combinations)))
-                print("  Rechte Seite (Gesamtzahl Wörter im Raum): 2^n = {}".format(int(num_possible_codewords)))
-                print("  Vereinfachte Prüfung: S = {}, Sollwert für Perfektion (2^(n-k_info)): {}".format(
-                    sum_combinations, val_for_perfection))
+    def show_combinations(self, params):
+        """Zeigt alle Kombinationen."""
+        print("\n=== KOMBINATIONEN C(n,i) ===")
+        for i, comb in params['comb_details']:
+            print("C({},{}) = {}".format(params['n'], i, comb))
+        print("Summe: {}".format(params['sum_comb']))
+        input("\nEnter fuer weiter...")
 
-                is_perfect = False
-                # Toleranz für Fließkommavergleiche
-                if isinstance(val_for_perfection, float):
-                    is_perfect = abs(sum_combinations - val_for_perfection) < self.tolerance
-                else:  # Sollte bei Potenzen von 2 ein int sein
-                    is_perfect = (sum_combinations == val_for_perfection)
+    def get_user_input(self):
+        """Holt Benutzereingaben mit Exit-Option."""
+        try:
+            print("\n=== CODE-PARAMETER RECHNER ===")
+            print("(Eingabe 'q' zum Beenden)")
 
-                if is_perfect:
-                    print("\n✅ Ergebnis: Der Code ist DICHTGEPACKT (PERFEKT).")
-                    print("   Die Bedingung 2^k_info * Σ C(n,i) = 2^n ist erfüllt.")
-                else:
-                    print("\n❌ Ergebnis: Der Code ist NICHT dichtgepackt.")
-                    if (num_valid_codewords * sum_combinations) > num_possible_codewords:
-                        print(
-                            "   Die Kugelpackungsschranke ist verletzt (2^k_info * S > 2^n). Dies sollte für gültige Codes nicht passieren.")
+            k_str = input("Nachrichtenstellen k: ")
+            if k_str.lower() == 'q':
+                return None
+            k_info = int(k_str)
+
+            r_str = input("Kontrollstellen r: ")
+            if r_str.lower() == 'q':
+                return None
+            k_control = int(r_str)
+
+            h_str = input("Hamming-Distanz h: ")
+            if h_str.lower() == 'q':
+                return None
+            h_dist = int(h_str)
+
+            # Validierung
+            if k_info < 1 or k_control < 1 or h_dist < 1:
+                print("Fehler: Alle Werte muessen >= 1 sein")
+                return None
+
+            if h_dist > (k_info + k_control):
+                print("Fehler: h zu gross fuer Codelaenge")
+                return None
+
+            return (k_info, k_control, h_dist)
+
+        except ValueError:
+            print("Fehler: Nur ganze Zahlen eingeben")
+            return None
+        except KeyboardInterrupt:
+            return None
+
+    def run(self):
+        """Hauptschleife mit Menüführung."""
+        while True:
+            # Eingaben holen
+            inputs = self.get_user_input()
+            if inputs is None:
+                print("Programm beendet.")
+                break
+
+            k_info, k_control, h_dist = inputs
+
+            # Parameter berechnen
+            try:
+                params = self.calculate_parameters(k_info, k_control, h_dist)
+            except Exception as e:
+                print("Berechnungsfehler: {}".format(e))
+                continue
+
+            # Menü-Schleife
+            while True:
+                self.show_summary(params)
+
+                try:
+                    choice = input("\nWahl: ").strip().lower()
+
+                    if choice == 'q':
+                        break
+                    elif choice == '1':
+                        self.show_details(params)
+                    elif choice == '2':
+                        self.show_perfectness_calc(params)
+                    elif choice == '3':
+                        self.show_combinations(params)
                     else:
-                        print("\n❌ Ergebnis: Der Code ist NICHT dichtgepackt.")
+                        print("Ungueltige Eingabe! (1, 2, 3 oder q)")
+                        input("Enter fuer weiter...")
 
-        except ValueError as ve:
-            print("❌ Eingabefehler: {}".format(ve))
-        except Exception as e:
-            print("❌ Ein unerwarteter Fehler ist aufgetreten: {}".format(e))
-        input("\nDrücke Enter zum Fortfahren...")  # Hinzugefügt
+                except KeyboardInterrupt:
+                    break
+
+            # Neue Berechnung?
+            try:
+                    print("Programm beendet.")
+                    break
+            except KeyboardInterrupt:
+                print("\nProgramm beendet.")
+                break

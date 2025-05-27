@@ -846,69 +846,65 @@ class ChannelTypeAnalysisTool(BaseChannelTool):
 
 
 class ComprehensiveChannelAnalysisTool(BaseChannelTool):
-    """Tool für vollständige Kanalanalyse"""
+    """Kompakte Kanalanalyse für Taschenrechner"""
 
     def run(self):
-        print("==== Vollständige Kanalanalyse ====")
+        print("=== Kanalanalyse ===")
         try:
-            n_inputs = self.safe_int_input("Anzahl Eingänge: ", 2, 10)
+            # Eingabe der Parameter
+            n_inputs = self.safe_int_input("Eingaenge: ", 2, 10)
             if n_inputs == 'q':
                 return
 
-            n_outputs = self.safe_int_input("Anzahl Ausgänge: ", 2, 10)
+            n_outputs = self.safe_int_input("Ausgaenge: ", 2, 10)
             if n_outputs == 'q':
                 return
 
-            # Kanalmatrix mit Validierung
             channel_matrix = self.input_channel_matrix_with_validation(n_inputs, n_outputs)
             if channel_matrix == 'q':
                 return
 
-            # Eingangswahrscheinlichkeiten mit Validierung
-            input_probs = self.input_probabilities_with_validation("Eingangswahrscheinlichkeiten P(X)", n_inputs)
+            input_probs = self.input_probabilities_with_validation("P(X)", n_inputs)
             if input_probs == 'q':
                 return
 
-            print("\n" + "=" * 70)
-            print("VOLLSTÄNDIGE KANALANALYSE")
-            print("=" * 70)
+            # Berechnungen durchführen
+            results = self.calculate_all_results(n_inputs, n_outputs, channel_matrix, input_probs)
+            if results is None:
+                return
 
+            # Hauptmenü anzeigen
+            self.show_main_menu(results, n_inputs, n_outputs, channel_matrix, input_probs)
+
+        except Exception as e:
+            print("Fehler: " + str(e))
+            self.wait_for_continue()
+
+    def calculate_all_results(self, n_inputs, n_outputs, channel_matrix, input_probs):
+        """Alle Berechnungen durchführen"""
+        try:
             # 1. Ausgabewahrscheinlichkeiten
-            print("\n1. AUSGABEWAHRSCHEINLICHKEITEN:")
             py = []
             for j in range(n_outputs):
-                calculation_parts = []
                 py_j = 0
                 for i in range(n_inputs):
                     py_j += input_probs[i] * channel_matrix[i][j]
-                    calculation_parts.append(str(round(input_probs[i], 3)) + "*" + str(round(channel_matrix[i][j], 3)))
                 py.append(py_j)
-                calculation = " + ".join(calculation_parts)
-                print("P(y" + str(j) + ") = " + calculation + " = " + str(round(py_j, 4)))
 
-            # Validiere Ausgabewahrscheinlichkeiten
+            # Validierung
             py_errors, py_warnings = self.validate_probabilities(py, "P(Y)")
             if py_errors:
-                print("❌ FEHLER in berechneten Ausgabewahrscheinlichkeiten:")
+                print("FEHLER P(Y):")
                 for error in py_errors:
-                    print("   " + error)
-                if self.wait_for_continue():
-                    return
-                return
+                    print(error)
+                self.wait_for_continue()
+                return None
 
             # 2. Entropien
-            print("\n2. ENTROPIE-BERECHNUNGEN:")
-            hx = 0
-            for p in input_probs:
-                if p > 0:
-                    hx += -p * self.safe_log2(p)
+            hx = self.calculate_entropy(input_probs)
+            hy = self.calculate_entropy(py)
 
-            hy = 0
-            for p in py:
-                if p > 0:
-                    hy += -p * self.safe_log2(p)
-
-            print("H(Y|X) Berechnung:")
+            # H(Y|X)
             hy_given_x = 0
             for i in range(n_inputs):
                 if input_probs[i] > 0:
@@ -917,117 +913,174 @@ class ComprehensiveChannelAnalysisTool(BaseChannelTool):
                         if channel_matrix[i][j] > 0:
                             h_y_xi += -channel_matrix[i][j] * self.safe_log2(channel_matrix[i][j])
                     hy_given_x += input_probs[i] * h_y_xi
-                    contribution = input_probs[i] * h_y_xi
-                    print("  H(Y|X=x" + str(i) + ") = " + str(round(h_y_xi, 4)) + ", Beitrag: " + str(
-                        round(input_probs[i], 3)) + " * " + str(round(h_y_xi, 4)) + " = " + str(round(contribution, 4)))
 
             hx_given_y = hx - (hy - hy_given_x)
             mutual_info = hy - hy_given_x
 
-            print("\nEntropie-Ergebnisse:")
-            print("H(X) = " + str(round(hx, 4)) + " bit")
-            print("H(Y) = " + str(round(hy, 4)) + " bit")
-            print("H(Y|X) = " + str(round(hy_given_x, 4)) + " bit")
-            print("H(X|Y) = " + str(round(hx_given_y, 4)) + " bit")
-            print("I(X;Y) = H(Y) - H(Y|X) = " + str(round(hy, 4)) + " - " + str(round(hy_given_x, 4)) + " = " + str(
-                round(mutual_info, 4)) + " bit")
-
             # Plausibilitätsprüfung
             if mutual_info < -self.tolerance:
-                print("❌ FEHLER: I(X;Y) = " + str(round(mutual_info, 6)) + " < 0!")
-                if self.wait_for_continue():
-                    return
-                return
+                print("FEHLER: I(X;Y) < 0!")
+                print("I(X;Y) = " + str(round(mutual_info, 6)))
+                self.wait_for_continue()
+                return None
 
             # 3. ML-Entscheider
-            print("\n3. MAXIMUM-LIKELIHOOD-ENTSCHEIDER:")
             decoder = {}
             for j in range(n_outputs):
                 max_prob = -1
                 best_input = -1
-                candidates = []
                 for i in range(n_inputs):
                     prob = channel_matrix[i][j]
-                    candidates.append("(" + str(i) + "," + str(round(prob, 3)) + ")")
                     if prob > max_prob:
                         max_prob = prob
                         best_input = i
-
                 decoder[j] = best_input
-                candidates_str = "[" + ",".join(candidates) + "]"
-                print("y" + str(j) + ": " + candidates_str + " → x" + str(best_input) + " (P = " + str(
-                    round(max_prob, 3)) + ")")
 
             # 4. Fehlerwahrscheinlichkeit
-            print("\n4. FEHLERWAHRSCHEINLICHKEIT:")
             total_error_prob = 0
             error_details = []
-
             for i in range(n_inputs):
                 for j in range(n_outputs):
                     decision = decoder[j]
-                    is_error = (decision != i)
-                    prob_contribution = input_probs[i] * channel_matrix[i][j]
-
-                    if is_error:
+                    if decision != i:
+                        prob_contribution = input_probs[i] * channel_matrix[i][j]
                         total_error_prob += prob_contribution
-                        error_details.append((i, j, prob_contribution))
+                        error_details.append((i, j, decoder[j], prob_contribution))
 
-            print("Fehlerhafte Übertragungen:")
-            for i, j, contrib in error_details:
-                print("  x" + str(i) + " → y" + str(j) + " → x" + str(decoder[j]) + ": P = " + str(round(contrib, 4)))
-
-            print("\nGesamtfehlerwahrscheinlichkeit: P(Fehler) = " + str(round(total_error_prob, 4)))
-
-            # 5. Übertragungszeit (optional)
-            calc_time = input("\n5. Übertragungszeit berechnen? (j/n/q): ").lower()
-            if calc_time == 'q':
-                return
-            elif calc_time == 'j':
-                data_size = self.safe_int_input("Datenmenge (Bit): ", 1, 1000000000)
-                if data_size == 'q':
-                    return
-
-                channel_rate = self.safe_int_input("Kanalrate (bit/s): ", 1, 1000000000)
-                if channel_rate == 'q':
-                    return
-
-                effective_rate = channel_rate * mutual_info
-                if effective_rate > 0:
-                    transmission_time = data_size / effective_rate
-                    print("\nÜbertragungszeit-Berechnung:")
-                    print(
-                        "Effektive Datenrate: " + str(channel_rate) + " × " + str(round(mutual_info, 4)) + " = " + str(
-                            round(effective_rate, 2)) + " bit/s")
-                    print("Übertragungszeit: " + str(data_size) + " / " + str(round(effective_rate, 2)) + " = " + str(
-                        round(transmission_time, 2)) + " s")
-
-                    if transmission_time >= 60:
-                        minutes = transmission_time / 60
-                        print("                 = " + str(round(minutes, 2)) + " Minuten")
-                        if minutes >= 60:
-                            hours = minutes / 60
-                            print("                 = " + str(round(hours, 2)) + " Stunden")
-                else:
-                    print("❌ Effektive Datenrate = 0, keine Übertragung möglich!")
-
-            # 6. Zusammenfassung
-            print("\n" + "=" * 70)
-            print("ZUSAMMENFASSUNG")
-            print("=" * 70)
-            print("Transinformation:          I(X;Y) = " + str(round(mutual_info, 4)) + " bit/Symbol")
-            print("Fehlerwahrscheinlichkeit:  P(Fehler) = " + str(round(total_error_prob, 4)))
-
-            if mutual_info > 0 and hx > 0:
-                efficiency = (mutual_info / hx) * 100
-                print("Kanaleffizienz:            " + str(round(efficiency, 1)) + "%")
-
-            print("✅ Vollständige Analyse erfolgreich abgeschlossen!")
+            return {
+                'py': py,
+                'hx': hx,
+                'hy': hy,
+                'hy_given_x': hy_given_x,
+                'hx_given_y': hx_given_y,
+                'mutual_info': mutual_info,
+                'decoder': decoder,
+                'error_prob': total_error_prob,
+                'error_details': error_details
+            }
 
         except Exception as e:
-            print("❌ Fehler: " + str(e))
+            print("Berechnungsfehler: " + str(e))
+            return None
 
-        if self.wait_for_continue():
+    def calculate_entropy(self, probs):
+        """Entropie berechnen"""
+        h = 0
+        for p in probs:
+            if p > 0:
+                h += -p * self.safe_log2(p)
+        return h
+
+    def show_main_menu(self, results, n_inputs, n_outputs, channel_matrix, input_probs):
+        """Hauptmenü mit Zusammenfassung"""
+        while True:
+            print("\n=== ERGEBNISSE ===")
+            print("I(X;Y) = " + str(round(results['mutual_info'], 4)) + " bit")
+            print("P(Fehler) = " + str(round(results['error_prob'], 4)))
+
+            if results['mutual_info'] > 0 and results['hx'] > 0:
+                efficiency = (results['mutual_info'] / results['hx']) * 100
+                print("Effizienz = " + str(round(efficiency, 1)) + "%")
+
+            print("\nDetails anzeigen:")
+            print("1) P(Y) - Ausgabewahrsch.")
+            print("2) Entropien")
+            print("3) ML-Entscheider")
+            print("4) Fehleranalyse")
+            print("5) Uebertragungszeit")
+            print("q) Zurueck")
+
+            choice = input("Wahl: ").lower()
+
+            if choice == 'q':
+                return
+            elif choice == '1':
+                self.show_output_probabilities(results['py'], n_outputs)
+            elif choice == '2':
+                self.show_entropies(results)
+            elif choice == '3':
+                self.show_decoder(results['decoder'], channel_matrix, n_inputs, n_outputs)
+            elif choice == '4':
+                self.show_error_analysis(results['error_details'], results['error_prob'])
+            elif choice == '5':
+                self.show_transmission_time(results['mutual_info'])
+
+    def show_output_probabilities(self, py, n_outputs):
+        """Ausgabewahrscheinlichkeiten anzeigen"""
+        print("\n=== P(Y) ===")
+        for j in range(n_outputs):
+            print("P(y" + str(j) + ") = " + str(round(py[j], 4)))
+
+        print("\nSumme = " + str(round(sum(py), 4)))
+        input("Enter...")
+
+    def show_entropies(self, results):
+        """Entropien anzeigen"""
+        print("\n=== ENTROPIEN ===")
+        print("H(X) = " + str(round(results['hx'], 4)) + " bit")
+        print("H(Y) = " + str(round(results['hy'], 4)) + " bit")
+        print("H(Y|X) = " + str(round(results['hy_given_x'], 4)) + " bit")
+        print("H(X|Y) = " + str(round(results['hx_given_y'], 4)) + " bit")
+        print("I(X;Y) = " + str(round(results['mutual_info'], 4)) + " bit")
+        input("Enter...")
+
+    def show_decoder(self, decoder, channel_matrix, n_inputs, n_outputs):
+        """ML-Entscheider anzeigen"""
+        print("\n=== ML-ENTSCHEIDER ===")
+        for j in range(n_outputs):
+            best_input = decoder[j]
+            best_prob = channel_matrix[best_input][j]
+            print("y" + str(j) + " -> x" + str(best_input) + " (P=" + str(round(best_prob, 3)) + ")")
+        input("Enter...")
+
+    def show_error_analysis(self, error_details, total_error_prob):
+        """Fehleranalyse anzeigen"""
+        print("\n=== FEHLERANALYSE ===")
+        print("Gesamt: P(Fehler) = " + str(round(total_error_prob, 4)))
+
+        if len(error_details) > 0:
+            print("\nFehlerhafte Pfade:")
+            for i, j, decision, prob in error_details:
+                if prob > 0.001:  # Nur relevante Fehler anzeigen
+                    print("x" + str(i) + "->y" + str(j) + "->x" + str(decision) +
+                          ": " + str(round(prob, 4)))
+        else:
+            print("Keine Fehler!")
+        input("Enter...")
+
+    def show_transmission_time(self, mutual_info):
+        """Übertragungszeit berechnen"""
+        print("\n=== UEBERTRAGUNG ===")
+
+        data_size = self.safe_int_input("Datenmenge (Bit): ", 1, 1000000000)
+        if data_size == 'q':
             return
 
+        channel_rate = self.safe_int_input("Kanalrate (bit/s): ", 1, 1000000000)
+        if channel_rate == 'q':
+            return
+
+        effective_rate = channel_rate * mutual_info
+        if effective_rate > 0:
+            transmission_time = data_size / effective_rate
+            print("\nEffektive Rate:")
+            print(str(channel_rate) + " x " + str(round(mutual_info, 4)) +
+                  " = " + str(round(effective_rate, 2)) + " bit/s")
+            print("\nZeit: " + str(round(transmission_time, 2)) + " s")
+
+            if transmission_time >= 60:
+                minutes = transmission_time / 60
+                print("    = " + str(round(minutes, 2)) + " min")
+                if minutes >= 60:
+                    hours = minutes / 60
+                    print("    = " + str(round(hours, 2)) + " h")
+        else:
+            print("Keine Uebertragung moeglich!")
+
+        input("Enter...")
+
+    def wait_for_continue(self):
+        """Warten auf Benutzereingabe"""
+        response = input("Enter oder q: ").lower()
+        return response == 'q'
 

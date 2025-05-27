@@ -205,7 +205,7 @@ class RLETool(Tool):
 
 class LZW(Tool):
 
-    def lzw_encode(self, data, initial_dict=None):  # ← 'self' hinzugefügt
+    def lzw_encode(self, data, initial_dict=None):
         """
         LZW Kompressionsalgorithmus mit optionalem Anfangswörterbuch
         """
@@ -250,7 +250,7 @@ class LZW(Tool):
 
         return result, dictionary
 
-    def lzw_decode(self, encoded_data, initial_dict=None):  # ← 'self' hinzugefügt
+    def lzw_decode(self, encoded_data, initial_dict=None):
         """
         LZW Dekompressionsalgorithmus mit optionalem Anfangswörterbuch
         """
@@ -295,235 +295,420 @@ class LZW(Tool):
 
         return result
 
-    def print_encoding_steps(self, data, initial_dict=None):  # ← 'self' hinzugefügt
+    def encode_compact(self, data, initial_dict=None):
         """
-        Zeigt die Schritte der LZW-Kodierung mit optionalem Anfangswörterbuch
+        Kompakte LZW-Kodierung - zeigt nur das Ergebnis
         """
-        # Initialisiere Wörterbuch
-        if initial_dict is None:
-            # Automatisch alle eindeutigen Zeichen aus der Eingabe verwenden
-            unique_chars = sorted(set(data))
-            dictionary = {char: i for i, char in enumerate(unique_chars)}
-            print("Automatisches Wörterbuch für Zeichen: {}".format(unique_chars))
-        elif isinstance(initial_dict, list):
-            dictionary = {char: i for i, char in enumerate(initial_dict)}
-            print("Anfangswörterbuch aus Liste: {}".format(initial_dict))
-        elif isinstance(initial_dict, dict):
-            dictionary = initial_dict.copy()
-            print("Vorgegebenes Wörterbuch: {}".format(initial_dict))
-        else:
-            raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
+        try:
+            result, dictionary = self.lzw_encode(data, initial_dict)
+            print("Eingabe: {}".format(data))
+            print("Kodiert: {}".format(' '.join(map(str, result))))
+            return result, dictionary
+        except Exception as e:
+            print("FEHLER: {}".format(str(e)))
+            return None, None
 
-        print("Eingabe: {}".format(data))
-        print("Startwörterbuch: {}".format(dictionary))
-        print("\nKodierungsschritte:")
-        print("Buffer | Erkannte Zeichenfolge (Index) | Neuer Eintrag")
-        print("-" * 60)
+    def show_encoding_steps(self, data, dictionary):
+        """
+        Zeigt detaillierte Kodierungsschritte (auf Anfrage)
+        """
+        print("\n=== KODIERUNGSSCHRITTE ===")
+
+        # Hilfsfunktion für Formatierung
+        def pad_left(text, width):
+            text = str(text)
+            if len(text) >= width:
+                return text
+            return text + ' ' * (width - len(text))
 
         result = []
         current_string = ""
-        buffer_pos = 0
+        step = 1
 
-        for i, char in enumerate(data):
-            buffer = data[buffer_pos:i + 1]
+        # Zeige Startwörterbuch
+        print("Start-Wörterbuch:")
+        for key, value in sorted(dictionary.items(), key=lambda x: x[1]):
+            print("  {}: '{}'".format(value, key))
+
+        print("\nSchritte:")
+
+        for char in data:
             new_string = current_string + char
 
             if new_string in dictionary:
                 current_string = new_string
             else:
-                # Ausgabe
-                index = dictionary[current_string] if current_string else None
-                if index is not None:
+                # Ausgabe für aktuellen Schritt
+                if current_string:
+                    index = dictionary[current_string]
                     result.append(index)
-                    next_entry_index = len(dictionary)
-                    print("{}   | {} ({}){}| → {}: {}".format(
-                        buffer.ljust(6),
-                        current_string,
-                        index,
-                        ' ' * (20 - len(current_string) - len(str(index))),
-                        next_entry_index,
-                        new_string
+                    next_index = len(dictionary)
+
+                    print("{}. '{}' -> {} | Neu: {}='{}'".format(
+                        step, current_string, index, next_index, new_string
                     ))
-                    dictionary[new_string] = next_entry_index
+
+                    dictionary[new_string] = next_index
+                    step += 1
 
                 current_string = char
-                buffer_pos = i
 
-        # Letzter Eintrag
+        # Letzter Schritt
         if current_string:
             index = dictionary[current_string]
             result.append(index)
-            print("{}   | {} ({})".format(data[buffer_pos:].ljust(6), current_string, index))
+            print("{}. '{}' -> {}".format(step, current_string, index))
 
-        print("\nKodierte Nachricht: {}".format(' '.join(map(str, result))))
+        print("\nErgebnis: {}".format(' '.join(map(str, result))))
+        return result
 
-        # Zeige finales Wörterbuch
-        print("\nFinales Wörterbuch:")
+    def show_final_dictionary(self, dictionary):
+        """
+        Zeigt das finale Wörterbuch (auf Anfrage)
+        """
+        print("\n=== FINALES WÖRTERBUCH ===")
         for key, value in sorted(dictionary.items(), key=lambda x: x[1]):
-            print("Index {}: '{}'".format(value, key))
-
-        return result, dictionary
+            print("{}: '{}'".format(value, key))
 
     def create_initial_dict_from_input(self):
         """
         Hilfsfunktion um Anfangswörterbuch vom Benutzer zu erstellen
         """
-        print("\n==== Anfangswörterbuch wählen ====")
-        print("1. Automatisch aus Eingabe")
-        print("2. Ziffern 0-9 (Standard)")
-        print("3. Buchstaben A-Z")
-        print("4. Kleinbuchstaben a-z")
-        print("5. Benutzerdefiniert")
+        print("\nWörterbuch wählen:")
+        print("1=Auto 2=0-9 3=A-Z 4=a-z 5=Custom")
 
-        choice = input("Wähle eine Option (1-5): ").strip()
-        print("Gewählte Option: {}".format(choice))  # Debug-Ausgabe
+        choice = input("Option: ").strip()
 
         if choice == "1":
-            print("→ Automatische Erkennung gewählt")
             return None  # Automatische Erkennung
         elif choice == "2":
-            print("→ Ziffern 0-9 gewählt")
             return [str(i) for i in range(10)]
         elif choice == "3":
-            print("→ Buchstaben A-Z gewählt")
             return [chr(i) for i in range(ord('A'), ord('Z') + 1)]
         elif choice == "4":
-            print("→ Kleinbuchstaben a-z gewählt")
             return [chr(i) for i in range(ord('a'), ord('z') + 1)]
         elif choice == "5":
-            print("→ Benutzerdefiniert gewählt")
-            chars_input = input("Zeichen eingeben (ohne Leerzeichen, z.B. 'abcd123'): ").strip()
+            chars_input = input("Zeichen eingeben: ").strip()
             if chars_input:
-                custom_dict = list(chars_input)
-                print("Benutzerdefiniertes Wörterbuch: {}".format(custom_dict))
-                return custom_dict
+                return list(chars_input)
             else:
-                print("Keine Eingabe - verwende Standard (Ziffern 0-9)")
                 return [str(i) for i in range(10)]
         else:
-            print("Ungültige Eingabe '{}' - verwende Standard (Ziffern 0-9)".format(choice))
             return [str(i) for i in range(10)]  # Default
 
     def run(self) -> None:
         """
         Hauptmenü für LZW-Funktionen
         """
-        print("==== Lempel-Ziv-Welch (LZW) ====")
-        print("1. Dekodieren")
-        print("2. Kodieren")
-        print("0. Exit")
+        print("=== LZW ===")
+        print("1=Dekodieren 2=Kodieren 0=Exit")
 
-        subchoice = input("\nWähle eine Option: ")
-        # DEBUG: Zeige was tatsächlich eingegeben wurde
-        print("DEBUG: Eingabe roh: '{}'".format(repr(subchoice)))
-        print("DEBUG: Eingabe Länge: {}".format(len(subchoice)))
+        subchoice = input("Option: ").strip()
 
-        # Robust behandeln
-        subchoice = str(subchoice).strip()
-        print("DEBUG: Nach strip(): '{}'".format(repr(subchoice)))
-
-        # Explizite Vergleiche mit Debug
-        print("DEBUG: subchoice == '1'? {}".format(subchoice == "1"))
-        print("DEBUG: subchoice == '2'? {}".format(subchoice == "2"))
-        print("DEBUG: subchoice == '0'? {}".format(subchoice == "0"))
-
-
-        if  subchoice == "1":
+        if subchoice == "1":
             # Dekodieren
             try:
-                print("Eingabe (LZW-Codes durch Leerzeichen getrennt):")
-                print("Beispiel: 1 2 3 10 12 11 13")
+                print("LZW-Codes (Leerzeichen getrennt):")
                 data_str = input().strip()
 
                 if not data_str:
-                    print("Keine Eingabe erhalten!")
+                    print("Keine Eingabe!")
                     return
 
                 encoded_data = list(map(int, data_str.split()))
-                print("Codes erhalten: {}".format(encoded_data))
-
                 initial_dict = self.create_initial_dict_from_input()
-                print("Dekodierungs-Wörterbuch: {}".format(initial_dict))
 
                 result = self.lzw_decode(encoded_data, initial_dict)
-                print("\nDekodiert: '{}'".format(result))
-                print("Anzahl Codes eingegeben: {}".format(len(encoded_data)))
-                print("Anzahl Zeichen dekodiert: {}".format(len(result)))
+                print("Dekodiert: '{}'".format(result))
 
-                # Zeige Dekodierungs-Wörterbuch
-                if initial_dict is None:
-                    print("WARNUNG: Automatisches Wörterbuch bei Dekodierung nicht möglich!")
-                    print("Verwende Standard: Ziffern 0-9")
-                else:
-                    print("Verwendetes Dekodierungs-Wörterbuch:")
-                    for i, char in enumerate(initial_dict):
-                        print("  {}: '{}'".format(i, char))
+                # Optional: Details zeigen
+                show_details = input("Details zeigen? (j/n): ").strip().lower()
+                if show_details == 'j':
+                    print("Codes: {}".format(len(encoded_data)))
+                    print("Zeichen: {}".format(len(result)))
 
             except Exception as e:
-                print("Fehler: {}".format(str(e)))
-                import traceback
-                traceback.print_exc()
+                print("FEHLER: {}".format(str(e)))
 
         elif subchoice == "2":
-            # Schritt-für-Schritt Anzeige
+            # Kodieren
             try:
-                data = input("Eingabe (codewort zum kodieren): ")
-                print("Eingabe erhalten: '{}'".format(data))
+                data = input("Text zum kodieren: ").strip()
+                if not data:
+                    print("Keine Eingabe!")
+                    return
 
                 initial_dict = self.create_initial_dict_from_input()
-                print("Gewähltes Wörterbuch für Schritt-Anzeige: {}".format(initial_dict))
 
-                print("\n{}".format('=' * 60))
-                result, final_dict = self.print_encoding_steps(data, initial_dict)
-                print("{}".format('=' * 60))
+                # Kompakte Kodierung
+                result, final_dict = self.encode_compact(data, initial_dict)
 
-                # Test der Dekodierung
-                decoded = self.lzw_decode(result, initial_dict)
-                print("\nVerifikation:")
-                print("Original:   '{}'".format(data))
-                print("Dekodiert:  '{}'".format(decoded))
-                print("Korrekt:    {}".format('✓' if data == decoded else '✗'))
+                if result is not None:
+                    # Optionale Details
+                    print("\nDetails zeigen?")
+                    print("1=Schritte 2=Wörterbuch 3=Beide 0=Nein")
+                    detail_choice = input("Option: ").strip()
 
-                # Kompressionsrate
-                if result:
-                    # Berechne Bits für Original
-                    if initial_dict is None:
-                        alphabet_size = len(set(data))
-                        print("Automatisches Alphabet: {} (Größe: {})".format(sorted(set(data)), alphabet_size))
-                    elif isinstance(initial_dict, list):
-                        alphabet_size = len(initial_dict)
-                        print("Verwendetes Alphabet: {} (Größe: {})".format(initial_dict, alphabet_size))
-                    else:
-                        alphabet_size = len(initial_dict)
-                        print("Dictionary-Alphabet (Größe: {})".format(alphabet_size))
+                    if detail_choice == "1":
+                        # Neue Kodierung für Schritte (da Dictionary verändert wurde)
+                        temp_result = self.show_encoding_steps(data,
+                                                               initial_dict.copy() if isinstance(initial_dict, dict)
+                                                               else ({char: i for i, char in
+                                                                      enumerate(initial_dict)} if initial_dict
+                                                                     else {char: i for i, char in
+                                                                           enumerate(sorted(set(data)))}))
+                    elif detail_choice == "2":
+                        self.show_final_dictionary(final_dict)
+                    elif detail_choice == "3":
+                        # Beide zeigen
+                        temp_result = self.show_encoding_steps(data,
+                                                               initial_dict.copy() if isinstance(initial_dict, dict)
+                                                               else ({char: i for i, char in
+                                                                      enumerate(initial_dict)} if initial_dict
+                                                                     else {char: i for i, char in
+                                                                           enumerate(sorted(set(data)))}))
+                        self.show_final_dictionary(final_dict)
 
-                    bits_per_char = max(1, alphabet_size.bit_length())
-                    original_bits = len(data) * bits_per_char
-
-                    # Berechne Bits für komprimierte Version
-                    max_index = max(result) if result else 0
-                    bits_per_code = max(bits_per_char, max_index.bit_length())
-                    compressed_bits = len(result) * bits_per_code
-
-                    compression_ratio = (1 - compressed_bits / original_bits) * 100 if original_bits > 0 else 0
-
-                    print("\nKompression:")
-                    print("Alphabet-Größe: {} (benötigt {} Bit pro Zeichen)".format(alphabet_size, bits_per_char))
-                    print("Original: {} Bits ({} Zeichen × {} Bit)".format(original_bits, len(data), bits_per_char))
-                    print(
-                        "Komprimiert: {} Bits ({} Codes × {} Bit)".format(compressed_bits, len(result), bits_per_code))
-                    print("Kompressionsrate: {:.1f}%".format(compression_ratio))
-
-
+                    # Verifikation
+                    decoded = self.lzw_decode(result, initial_dict)
+                    if data != decoded:
+                        print("WARNUNG: Verifikation fehlgeschlagen!")
+                        print("Original: '{}'".format(data))
+                        print("Dekodiert: '{}'".format(decoded))
 
             except Exception as e:
-                print("Fehler: {}".format(str(e)))
-                import traceback
-                traceback.print_exc()
+                print("FEHLER: {}".format(str(e)))
 
         else:
-            print("Ungültige Option gewählt!")
+            print("Ungültige Option!")
 
-        print("\nDrücke Enter, um fortzufahren...")
+        print("\nEnter für weiter...")
         input()
+
+
+class InfoAnalyseTool:
+    def __init__(self):
+        self.symbols = []
+        self.probs = []
+        self.codes = []
+        self.results = {}
+
+    def clear_screen(self):
+        """Simuliert clear screen für bessere Übersicht"""
+        print("\n" * 5)
+
+    def input_data(self):
+        """Eingabe der Grunddaten"""
+        print("=== Daten eingeben ===")
+        try:
+            n = int(input("Anzahl Symbole: "))
+            if n <= 0:
+                raise ValueError("Muss > 0 sein")
+
+            self.symbols = []
+            self.probs = []
+
+            for i in range(n):
+                sym = input("Symbol {}: ".format(i + 1))
+                prob = float(input("P({}): ".format(sym)))
+                if prob <= 0 or prob > 1:
+                    raise ValueError("P muss 0 < P <= 1")
+                self.symbols.append(sym)
+                self.probs.append(prob)
+
+            # Prüfe Summe
+            total = sum(self.probs)
+            if abs(total - 1.0) > 0.001:
+                print("WARNUNG: Summe = {:.3f}".format(total))
+
+            return True
+        except Exception as e:
+            print("Fehler: {}".format(str(e)))
+            return False
+
+    def calculate_all(self):
+        """Berechnet alle wichtigen Werte"""
+        if not self.probs:
+            return False
+
+        # Entropie
+        h = -sum(p * math.log(p, 2) for p in self.probs if p > 0)
+
+        # Redundanz Quelle
+        n = len(self.symbols)
+        h0 = math.log(n, 2)
+        rq = h0 - h
+
+        # Speichere Ergebnisse
+        self.results = {
+            'entropy': h,
+            'h0': h0,
+            'redundanz_quelle': rq,
+            'n_symbols': n
+        }
+
+        return True
+
+    def create_huffman(self):
+        """Erstellt Huffman-Code"""
+        if len(self.symbols) <= 1:
+            return {"codes": {self.symbols[0]: "0"}, "avg_len": 1.0}
+
+        # Nodes: [freq, symbol_or_list]
+        nodes = [[p, s] for s, p in zip(self.symbols, self.probs)]
+
+        while len(nodes) > 1:
+            nodes.sort(key=lambda x: x[0])
+            left = nodes.pop(0)
+            right = nodes.pop(0)
+
+            merged = [left[0] + right[0], [left, right]]
+            nodes.append(merged)
+
+        # Codes extrahieren
+        codes = {}
+
+        def assign_codes(node, code=""):
+            if isinstance(node[1], str):  # Blatt
+                codes[node[1]] = code if code else "0"
+            else:  # Innerer Knoten
+                assign_codes(node[1][0], code + "0")
+                assign_codes(node[1][1], code + "1")
+
+        assign_codes(nodes[0])
+
+        # Mittlere Länge
+        avg_len = sum(len(codes[s]) * p for s, p in zip(self.symbols, self.probs))
+
+        return {"codes": codes, "avg_len": avg_len}
+
+    def show_summary(self):
+        """Zeigt Zusammenfassung"""
+        if not self.results:
+            print("Keine Daten!")
+            return
+
+        print("=== ZUSAMMENFASSUNG ===")
+        print("Symbole: {}".format(len(self.symbols)))
+        print("H(X): {:.3f} bit".format(self.results['entropy']))
+        print("RQ: {:.3f} bit".format(self.results['redundanz_quelle']))
+
+        # Huffman berechnen
+        huff = self.create_huffman()
+        rc_huff = huff['avg_len'] - self.results['entropy']
+        print("L_Huff: {:.3f} bit".format(huff['avg_len']))
+        print("RC_Huff: {:.3f} bit".format(rc_huff))
+
+    def show_entropy_details(self):
+        """Details zur Entropie"""
+        print("=== ENTROPIE DETAILS ===")
+        print("H(X) = -sum(p*log2(p))")
+        print("")
+        total = 0
+        for s, p in zip(self.symbols, self.probs):
+            term = -p * math.log(p, 2)
+            total += term
+            print("{}: {:.3f}*{:.3f}={:.3f}".format(s, p, math.log(p, 2), term))
+        print("Sum: {:.6f} bit".format(total))
+
+    def show_redundanz_details(self):
+        """Details zur Redundanz"""
+        print("=== REDUNDANZ DETAILS ===")
+        print("H0 = log2(n) = {:.3f}".format(self.results['h0']))
+        print("H(X) = {:.3f}".format(self.results['entropy']))
+        print("RQ = H0-H(X) = {:.3f}".format(self.results['redundanz_quelle']))
+
+    def show_huffman_details(self):
+        """Details zum Huffman-Code"""
+        print("=== HUFFMAN DETAILS ===")
+        huff = self.create_huffman()
+
+        for s in self.symbols:
+            code = huff['codes'].get(s, "?")
+            print("{}: {}".format(s, code))
+
+        print("")
+        print("Mittlere Länge:")
+        total = 0
+        for s, p in zip(self.symbols, self.probs):
+            code_len = len(huff['codes'].get(s, ""))
+            term = p * code_len
+            total += term
+            print("{}: {:.3f}*{}={:.3f}".format(s, p, code_len, term))
+        print("L = {:.6f} bit".format(total))
+
+    def encode_message(self):
+        """Nachricht codieren"""
+        if not self.symbols:
+            print("Keine Daten!")
+            return
+
+        msg = input("Nachricht: ")
+        huff = self.create_huffman()
+
+        encoded = ""
+        for char in msg:
+            if char in huff['codes']:
+                encoded += huff['codes'][char]
+            else:
+                print("Zeichen '{}' unbekannt!".format(char))
+                return
+
+        print("Codiert: {}".format(encoded))
+        print("Länge: {} bit".format(len(encoded)))
+        orig_len = len(msg) * math.ceil(math.log(len(self.symbols), 2))
+        print("Original: {} bit".format(orig_len))
+        if orig_len > 0:
+            comp = len(encoded) / float(orig_len)
+            print("Kompression: {:.1%}".format(comp))
+
+    def run(self):
+        """Hauptmenü"""
+        while True:
+            self.clear_screen()
+            print("=== INFO ANALYSE ===")
+            if self.symbols:
+                print("Daten: {} Symbole".format(len(self.symbols)))
+                print("")
+                print("1) Zusammenfassung")
+                print("2) Entropie Details")
+                print("3) Redundanz Details")
+                print("4) Huffman Details")
+                print("5) Nachricht codieren")
+                print("6) Neue Daten")
+            else:
+                print("Keine Daten vorhanden")
+                print("")
+                print("1) Daten eingeben")
+
+            print("q) Beenden")
+            print("")
+
+            choice = input("Wahl: ").strip().lower()
+
+            if choice == 'q':
+                break
+            elif choice == '1':
+                if self.symbols:
+                    self.show_summary()
+                else:
+                    if self.input_data():
+                        self.calculate_all()
+                        self.show_summary()
+            elif choice == '2' and self.symbols:
+                self.show_entropy_details()
+            elif choice == '3' and self.symbols:
+                self.show_redundanz_details()
+            elif choice == '4' and self.symbols:
+                self.show_huffman_details()
+            elif choice == '5' and self.symbols:
+                self.encode_message()
+            elif choice == '6' and self.symbols:
+                if self.input_data():
+                    self.calculate_all()
+            else:
+                print("Ungültige Eingabe!")
+
+            if choice != 'q':
+                input("\nEnter zum Fortfahren...")
 

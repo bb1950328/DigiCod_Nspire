@@ -15,6 +15,7 @@ TOOLS = [
         tool_base.ToolEntry(3, "Huffman-Code erstellen", tools_entropy_compression.HuffmanTool),
         tool_base.ToolEntry(4, "Lauflängenkodierung (RLE)", tools_entropy_compression.RLETool),
         tool_base.ToolEntry(5, "Lempel-Ziv LZW", tools_entropy_compression.LZW),
+        tool_base.ToolEntry(6, "Vollständige Analyse", tools_entropy_compression.InfoAnalyseTool),
     ]),
 
     tool_base.ToolGroup(2, "RSA", [
@@ -25,15 +26,12 @@ TOOLS = [
         tool_base.ToolEntry(1, "Blockcode: Analyse",tools_channel_coding.ComprehensiveCodeAnalysisTool),
         tool_base.ToolEntry(2, "Blockcode: Eigenschaften",tools_channel_coding.CodePropertiesAnalysisTool),
         tool_base.ToolEntry(3, "Prüfmatrix H:", tools_channel_coding.ParityMatrixTool),
-        tool_base.ToolEntry(4, "Fehlersyndrom S:",tools_channel_coding.ErrorSyndromeTool),
-        tool_base.ToolEntry(5, "Zyklischer Code: g(x) zu Matrix",tools_channel_coding.CyclicCodeAnalysisTool),
-        tool_base.ToolEntry(6, "Zyklischer Code: mit g(x) codieren",tools_channel_coding.SystematicEncodingTool),
-        tool_base.ToolEntry(7, "CRC: Prüfbits mit g(x) berechnen & Codewort erstellen",tools_channel_coding.CRCCalculationTool),
-        tool_base.ToolEntry(8, "CRC: Empfangenes Wort mit g(x) prüfen", tools_channel_coding.CRCCheckTool),
-        tool_base.ToolEntry(9, "Simulation: Schieberegister für g(x)", tools_channel_coding.ShiftRegisterTool),
-        tool_base.ToolEntry(10, "Hilfswerkzeug: Polynomdivision in GF(2)", tools_channel_coding.PolynomialDivisionTool),
-        tool_base.ToolEntry(11, "Hilfswerkzeug: Hamming-Distanz berechnen", tools_channel_coding.HammingDistanceTool),
-        tool_base.ToolEntry(12, "Analyse: Code-Parameter & Dichtgepacktheit",tools_channel_coding.CodeParametersAndBoundsTool),  # Neuer/Angepasster Eintrag
+        tool_base.ToolEntry(4, "Zyklischer Code: g(x) zu Matrix",tools_channel_coding.CyclicCodeAnalysisTool),
+        tool_base.ToolEntry(5, "CRC: Prüfbits mit g(x) berechnen & Codewort erstellen",tools_channel_coding.CRCCalculationTool),
+        tool_base.ToolEntry(6, "CRC: Empfangenes Wort mit g(x) prüfen", tools_channel_coding.CRCCheckTool),
+        tool_base.ToolEntry(7, "Polynomdivision", tools_channel_coding.PolynomialDivisionTool),
+        tool_base.ToolEntry(8, "Hamming-Distanz berechnen", tools_channel_coding.HammingDistanceTool),
+        tool_base.ToolEntry(9, "Code-Parameter & Dichtgepacktheit",tools_channel_coding.CodeParametersAndBoundsTool),  # Neuer/Angepasster Eintrag
 
     ]),
 

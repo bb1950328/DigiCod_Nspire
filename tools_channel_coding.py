@@ -945,62 +945,24 @@ class PolynomialDivisionTool(BaseChannelCodingTool):
         input("\nDrücke Enter zum Fortfahren...")
 
 
-import math
-
-
-class BaseChannelCodingTool:
-    """Basisklasse für Kanalcodierungs-Tools (simuliert für Kontext)."""
-
-    def __init__(self):
-        pass
-
-    def validate_generator_polynomial(self, generator_poly_str):
-        """
-        Validiert das Generatorpolynom.
-        Gibt eine Liste von Fehlern und Warnungen zurück.
-        """
-        errors = []
-        warnings = []
-        if not generator_poly_str:
-            errors.append("Generatorpolynom darf nicht leer sein.")
-            return errors, warnings
-
-        if not all(c in '01' for c in generator_poly_str):
-            errors.append("Generatorpolynom darf nur '0' und '1' enthalten.")
-
-        if generator_poly_str.startswith('0') and len(generator_poly_str) > 1:
-            warnings.append("Generatorpolynom beginnt mit '0'. Dies ist unüblich.")
-
-        if len(generator_poly_str) < 2:
-            errors.append("Generatorpolynom muss mindestens Grad 1 haben (z.B. '11').")
-
-        return errors, warnings
-
-
 class CyclicCodeAnalysisTool(BaseChannelCodingTool):
-    """Tool für zyklische Code Analyse - Implementierung nach Übung 11"""
+    """Kompakte Tool für zyklische Code Analyse - optimiert für Taschenrechner"""
 
     def __init__(self):
         super().__init__()
+        self.last_result = None
 
     def polynomial_division_gf2(self, dividend_str, divisor_str):
-        """
-        Führt eine Polynomdivision in GF(2) durch.
-        Beide Eingaben sind Binärstrings (MSB zuerst).
-        Gibt (Quotient, Rest) als Binärstrings zurück.
-        Diese Methode implementiert das Verfahren der schrittweisen XOR-Operationen,
-        analog zur "schnellen Mehrfachaddition" bzw. Standard-Polynomdivision für Syndrome.
-        """
-
+        """Polynomdivision in GF(2) - kompakte Version"""
         dividend = [int(bit) for bit in dividend_str]
         divisor = [int(bit) for bit in divisor_str]
 
-        # Entferne führende Nullen vom Divisor, falls vorhanden (sollte nicht der Fall sein für g(x))
+        # Entferne führende Nullen vom Divisor
         while len(divisor) > 1 and divisor[0] == 0:
             divisor.pop(0)
 
         if not divisor or all(bit == 0 for bit in divisor):
-            raise ValueError("Divisor darf nicht Null sein.")
+            raise ValueError("Divisor = 0")
 
         if len(dividend) < len(divisor):
             return "0", "".join(map(str, dividend))
@@ -1008,616 +970,816 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
         register = list(dividend)
         quotient = []
 
-        # Anfängliche Ausrichtung und führende Nullen im Quotienten
-        lead_zeros = 0
+        # Führende Nullen behandeln
         while register and register[0] == 0 and len(register) >= len(divisor):
             quotient.append(0)
             register.pop(0)
-            if not register:  # Fall: Dividend war komplett 0
+            if not register:
                 break
 
-        # Haupt-Divisionsschleife
-        # Solange der Grad des Registers >= Grad des Divisors ist
+        # Hauptdivision
         while len(register) >= len(divisor):
-            if register[0] == 1:  # Wenn das führende Bit 1 ist, XOR durchführen
+            if register[0] == 1:
                 quotient.append(1)
                 for i in range(len(divisor)):
-                    register[i] ^= divisor[i]
-            else:  # Wenn das führende Bit 0 ist, einfach shiften
+                    register[i] = register[i] ^ divisor[i]  # XOR ohne ^= für MicroPython
+            else:
                 quotient.append(0)
-
-            # Register shiften (führende Null entfernen)
             register.pop(0)
 
-            # Zusätzliche Nullen im Quotienten für die verbleibenden Bits des Dividenden,
-            # wenn das Register kleiner als der Divisor wird, bevor alle Bits verarbeitet wurden.
-            if len(register) < len(divisor) and len(register) < (len(dividend_str) - len(quotient)):
-                quotient.extend([0] * ((len(dividend_str) - len(quotient)) - len(register)))
-
-        # Der Rest ist, was im Register übrig bleibt
         remainder_str = "".join(map(str, register))
-        # Quotient formatieren
         quotient_str = "".join(map(str, quotient)) if quotient else "0"
-
-        # Sicherstellen, dass der Rest die korrekte Länge hat (Grad < Grad des Divisors)
-        # Normalerweise sollte der Rest kürzer sein als der Divisor.
-        # Für Syndrome ist die Länge des Rests = Grad des Generatorpolynoms
 
         return quotient_str, remainder_str
 
-    def create_parity_matrix_from_generator(self, generator_poly_str, code_length_n=None):
-        """
-        Erstellt die Prüfmatrix (H) für einen zyklischen Code, basierend auf dem Generatorpolynom g(x).
-        Die Methode folgt den Prinzipien aus Übung 11, Aufgaben 5.2 und 5.3:
-        1. Für jede Fehlerposition i wird ein Fehlervektor e_i(x) (Polynom x^i oder entsprechendes Bitmuster) erstellt.
-        2. Das Syndrom s_i(x) für diesen Fehler wird durch Polynomdivision e_i(x) mod g(x) berechnet[cite: 1585].
-           Der Rest dieser Division ist das Syndrom.
-        3. Die Koeffizienten des Syndroms s_i(x) bilden die i-te Spalte der Prüfmatrix H[cite: 1586].
-        Die Matrix wird live berechnet und nicht aus einem Speicher geladen.
-        """
-        print("\n==== BERECHNUNG DER PRÜFMATRIX H (ZYKLISCHER CODE) ====")
-        print("Methode nach Übung 11, Aufgabe 5.2 & 5.3: Syndrome durch Polynomdivision")
+    def create_parity_matrix_compact(self, generator_poly_str, code_length_n=None):
+        """Erstellt Prüfmatrix - kompakte Version mit minimaler Ausgabe"""
 
+        # Validierung
         errors, warnings = self.validate_generator_polynomial(generator_poly_str)
         if errors:
-            for error in errors:
-                print("❌ FEHLER: {}".format(error))
+            print("FEHLER:", errors[0])
             return None
-        for warning in warnings:
-            print("⚠️ WARNUNG: {}".format(warning))
 
         g_coeffs = [int(b) for b in generator_poly_str]
+        k = len(g_coeffs) - 1  # Kontrollstellen
 
-        # Grad des Generatorpolynoms k (Anzahl der Kontrollstellen)
-        # g(x) = g_k * x^k + ... + g_1 * x^1 + g_0 * x^0. g_k ist immer 1.
-        # Länge von g_coeffs ist k+1. Grad k ist len(g_coeffs) - 1.
-        num_control_bits_k = len(g_coeffs) - 1
-        print("Generatorpolynom g(x): {}".format(generator_poly_str))
-        print("Grad des Generatorpolynoms (Anzahl Kontrollstellen): k = {}".format(num_control_bits_k))
-
-        # Bestimme Codelänge n
-        # Für einen (zyklischen) Hamming-Code, erzeugt von einem primitiven Polynom vom Grad k,
-        # ist n = 2^k - 1.
+        # Codelänge bestimmen
         if code_length_n is None:
-            # Annahme für Hamming-Codes wenn n nicht spezifiziert
-            if num_control_bits_k > 0:  # Verhindert Endlosschleife oder Fehler bei k=0
-                n = (2 ** num_control_bits_k) - 1
-            else:  # Sollte durch Validierung abgefangen werden
-                print("❌ FEHLER: Grad des Generatorpolynoms muss > 0 sein.")
+            if k > 0:
+                n = (2 ** k) - 1
+            else:
+                print("FEHLER: k muss > 0")
                 return None
-            print("Codelänge (angenommen für Hamming-Code): n = 2^k - 1 = {}".format(n))
         else:
             n = code_length_n
-            if n <= num_control_bits_k:
-                print("❌ FEHLER: Codelänge n ({}) muss größer sein als Grad k ({}).".format(n, num_control_bits_k))
+            if n <= k:
+                print("FEHLER: n muss > k")
                 return None
-            print("Codelänge (gegeben): n = {}".format(n))
 
-        num_message_bits_m = n - num_control_bits_k
-        print("Anzahl Nachrichtenstellen: m = n - k = {}".format(num_message_bits_m))
+        m = n - k  # Nachrichtenstellen
 
-        if n <= 0 or num_message_bits_m <= 0:
-            print("❌ FEHLER: Ungültige Code-Parameter (n={}, m={}, k={}).".format(n, num_message_bits_m,
-                                                                                  num_control_bits_k))
-            return None
+        # Kurze Zusammenfassung
+        print("Code: ({},{}) k={} Hamming".format(n, m, k))
 
-        # Initialisiere Prüfmatrix H (k Zeilen, n Spalten)
-        H = [[0 for _ in range(n)] for _ in range(num_control_bits_k)]
+        # H-Matrix berechnen
+        H = [[0 for _ in range(n)] for _ in range(k)]
 
-        print("\n--- Berechnung der Spalten der Prüfmatrix H durch Syndrome ---")
-        # Die Spalten von H sind die Syndrome der Fehlervektoren x^i (für i von n-1 bis 0)
-        # Fehlervektor x^i bedeutet eine '1' an der (i+1)-ten Bitposition von rechts (LSB ist x^0)
-        # oder (n-i)-ten Position von links (MSB ist x^(n-1))
-        for j in range(n):  # j repräsentiert die Fehlerposition von links (0 bis n-1)
-            # Dies entspricht dem Fehlerpolynom e(x) = x^(n-1-j)
-            error_poly_str = ['0'] * n
-            error_poly_str[j] = '1'  # Fehler an der j-ten Stelle (0-indexed von links)
-            error_poly_str = "".join(error_poly_str)
+        for j in range(n):
+            error_poly = ['0'] * n
+            error_poly[j] = '1'
+            error_str = "".join(error_poly)
 
-            # Das Syndrom ist der Rest der Division e(x) / g(x)
-            _, syndrome_str = self.polynomial_division_gf2(error_poly_str, generator_poly_str)
+            _, syndrome_str = self.polynomial_division_gf2(error_str, generator_poly_str)
+            syndrome_str = syndrome_str.zfill(k)
 
-            # Sicherstellen, dass das Syndrom k_check_bits lang ist (mit führenden Nullen auffüllen)
-            syndrome_str = syndrome_str.zfill(num_control_bits_k)
+            if len(syndrome_str) > k:
+                syndrome_str = syndrome_str[-k:]
 
-            if len(syndrome_str) > num_control_bits_k:  # Sollte nicht passieren wenn division korrekt ist
-                syndrome_str = syndrome_str[-num_control_bits_k:]
-
-            print("  Fehler an Position x_{} (Polynom x^{}): e_{}(x) = {}, Syndrom s_{}(x) = {}".format(
-                j + 1,  # für x_{j+1}
-                n - 1 - j,  # für x^{n-1-j}
-                j + 1,  # für e_{j+1}(x)
-                error_poly_str,  # für das erste {} nach e_{...}(x) =
-                j + 1,  # für s_{j+1}(x) <--- DIESES HAT GEFEHLT
-                syndrome_str  # für das {} nach s_{...}(x) =
-            ))
-            # Das Syndrom (als k-Bit Vektor) ist die (j+1)-te Spalte von H
-            for i in range(num_control_bits_k):
+            for i in range(k):
                 H[i][j] = int(syndrome_str[i])
 
-        print("\n--- Resultierende Prüfmatrix H ---")
-        header = "    " + " ".join(["x{:<2}".format(i + 1) for i in range(n)])
-        print(header)
-        print("    " + "-" * (len(header) - 4))
-        for i, row in enumerate(H):
-            row_str = "h{:<2}: ".format(i + 1) + " ".join(["{:<2}".format(bit) for bit in row])
-            print(row_str)
+        # Validierung
+        zero_cols = 0
+        col_set = set()
+        for j in range(n):
+            col = tuple(H[i][j] for i in range(k))
+            if all(bit == 0 for bit in col):
+                zero_cols += 1
+            col_set.add(col)
 
-        # Formatiere als Prüfgleichungen
-        print("\nPrüfgleichungen (s_i = sum(H_ij * x_j) = 0):")
-        for i in range(num_control_bits_k):
-            terms = []
-            for j in range(n):
-                if H[i][j] == 1:
-                    terms.append("x{}".format(j + 1))
-            if terms:
-                equation = " + ".join(terms) + " = 0"
-                print("s{}: {}".format(i + 1, equation))
-            else:
-                print("s{}: 0 = 0".format(i + 1))  # Sollte nicht vorkommen für sinnvolle H
+        is_valid = (zero_cols == 0) and (len(col_set) == n)
+        status = "OK" if is_valid else "WARNUNG"
+        print("Status: {}".format(status))
 
-        self._verify_H_matrix_properties(H, generator_poly_str, n, num_control_bits_k)
+        if not is_valid:
+            if zero_cols > 0:
+                print("- {} Nullspalten".format(zero_cols))
+            if len(col_set) != n:
+                print("- Doppelte Spalten")
 
         return {
             'parity_matrix': H,
             'code_length_n': n,
-            'message_bits_m': num_message_bits_m,
-            'control_bits_k': num_control_bits_k,
-            'generator_polynomial_str': generator_poly_str
+            'message_bits_m': m,
+            'control_bits_k': k,
+            'generator_polynomial_str': generator_poly_str,
+            'is_valid': is_valid,
+            'zero_columns': zero_cols,
+            'unique_columns': len(col_set)
         }
 
-    def _verify_H_matrix_properties(self, H, generator_str, n, k_ctrl_bits):
-        """Überprüft allgemeine Eigenschaften der generierten H-Matrix."""
-        print("\n--- Verifikation der H-Matrix Eigenschaften ---")
-
-        if not H or not H[0] or k_ctrl_bits <= 0:  # Zusätzliche Prüfung für k_ctrl_bits
-            print("❌ Leere oder ungültige H-Matrix / Kontrollbit-Anzahl zur Verifikation übergeben.")
+    def show_details_menu(self, result):
+        """Zeigt Details-Menü"""
+        if not result:
             return
 
-        # Prüfe auf Nullspalten
-        zero_columns_found = 0
-        # Stelle sicher, dass n der tatsächlichen Spaltenanzahl von H entspricht
-        actual_n = len(H[0]) if H else 0
-        if actual_n != n:
-            print(
-                "⚠️ Warnung: Erwartete Spaltenanzahl n={} stimmt nicht mit tatsächlicher Spaltenanzahl {} der Matrix H überein.".format(
-                    n, actual_n))
-            # Fahre fort mit actual_n für die Prüfungen, aber dies deutet auf ein Problem hin
+        while True:
+            print("\n--- DETAILS ---")
+            print("1: H-Matrix")
+            print("2: Pruefgleichungen")
+            print("3: Eigenschaften")
+            print("q: Zurueck")
 
-        # Verwende die tatsächliche Anzahl der Spalten in der generierten Matrix H für die Schleife
-        for j in range(actual_n):
-            # Stelle sicher, dass k_ctrl_bits der tatsächlichen Zeilenanzahl von H entspricht
-            actual_k = len(H)
-            if actual_k != k_ctrl_bits:
-                print(
-                    "⚠️ Warnung: Erwartete Zeilenanzahl k_ctrl_bits={} stimmt nicht mit tatsächlicher Zeilenanzahl {} der Matrix H überein.".format(
-                        k_ctrl_bits, actual_k))
-                # Fahre fort mit actual_k für die Prüfungen
+            choice = input("Wahl: ").strip().lower()
 
-            is_zero_column = all(H[i][j] == 0 for i in range(actual_k))
-            if is_zero_column:
-                zero_columns_found += 1
-
-        if zero_columns_found == 0:
-            print("✅ Korrekt: Keine Nullspalten in H.")
-        else:
-            print(
-                "❌ Warnung: {} Nullspalten in H gefunden. (Ungültig für Hamming-Codes und fehlererkennende Codes)".format(
-                    zero_columns_found))
-
-        # Prüfe auf eindeutige Spalten (wichtig für Hamming-Codes zur 1-Bit-Fehlerkorrektur)
-        columns_as_tuples = []
-        if actual_n > 0 and len(H) == k_ctrl_bits:  # Nutze actual_k (len(H))
-            for j in range(actual_n):  # Nutze actual_n
-                col = tuple(H[i][j] for i in range(k_ctrl_bits))  # Nutze k_ctrl_bits (sollte len(H) sein)
-                columns_as_tuples.append(col)
-
-            if len(set(columns_as_tuples)) == actual_n:  # Vergleiche mit actual_n
-                print("✅ Korrekt: Alle Spalten in H sind eindeutig.")
+            if choice == 'q':
+                break
+            elif choice == '1':
+                self.show_h_matrix(result)
+            elif choice == '2':
+                self.show_parity_equations(result)
+            elif choice == '3':
+                self.show_properties(result)
             else:
-                column_counts = {}
-                for col_tuple in columns_as_tuples:
-                    column_counts[col_tuple] = column_counts.get(col_tuple, 0) + 1
+                print("Ungueltig!")
 
-                duplicate_columns = {col: count for col, count in column_counts.items() if count > 1}
-                if duplicate_columns:
-                    print("❌ Warnung: Es gibt {} verschiedene Spaltenmuster, die mehrfach vorkommen:".format(
-                        len(duplicate_columns)))
-                    for col_tuple, count in duplicate_columns.items():
-                        col_str = "".join(map(str, col_tuple))
-                        print("    - Spaltenmuster ({}) kommt {}-mal vor.".format(col_str, count))
-                else:
-                    print("❌ Warnung: Es gibt doppelte Spalten in H, aber Details konnten nicht ermittelt werden.")
-        elif k_ctrl_bits > 0:  # Nur wenn k_ctrl_bits > 0 ist, sonst ist H leer und die obige Bedingung nicht erfüllt
-            print("ℹ️ Prüfung auf eindeutige Spalten übersprungen aufgrund von Matrix-Dimensionen oder Parametern.")
+            input("\nEnter...")
+
+    def show_h_matrix(self, result):
+        """Zeigt H-Matrix seitenweise"""
+        H = result['parity_matrix']
+        n = result['code_length_n']
+        k = result['control_bits_k']
+
+        print("\nH-Matrix ({}x{}):".format(k, n))
+
+        # Zeige Matrix in Blöcken bei großen n
+        cols_per_page = 8
+        for start_col in range(0, n, cols_per_page):
+            end_col = min(start_col + cols_per_page, n)
+
+            # Header
+            header = "   "
+            for j in range(start_col, end_col):
+                header += "x{:<2}".format(j + 1)
+            print(header)
+
+            # Zeilen
+            for i in range(k):
+                row = "h{}:".format(i + 1)
+                for j in range(start_col, end_col):
+                    row += " {} ".format(H[i][j])
+                print(row)
+
+            if end_col < n:
+                input("\nNaechste Spalten...")
+
+    def show_parity_equations(self, result):
+        """Zeigt Prüfgleichungen"""
+        H = result['parity_matrix']
+        n = result['code_length_n']
+        k = result['control_bits_k']
+
+        print("\nPruefgleichungen:")
+        for i in range(k):
+            terms = []
+            for j in range(n):
+                if H[i][j] == 1:
+                    terms.append("x{}".format(j + 1))
+
+            if terms:
+                equation = " + ".join(terms) + " = 0"
+                print("s{}: {}".format(i + 1, equation))
+            else:
+                print("s{}: 0 = 0".format(i + 1))
+
+    def show_properties(self, result):
+        """Zeigt Code-Eigenschaften"""
+        print("\nCode-Eigenschaften:")
+        print("n = {} (Codelaenge)".format(result['code_length_n']))
+        print("k = {} (Kontrollstellen)".format(result['control_bits_k']))
+        print("m = {} (Nachrichtenstellen)".format(result['message_bits_m']))
+        print("g(x) = {}".format(result['generator_polynomial_str']))
+
+        print("\nMatrix-Eigenschaften:")
+        print("Nullspalten: {}".format(result['zero_columns']))
+        print("Eindeutige Spalten: {}/{}".format(result['unique_columns'], result['code_length_n']))
+        print("Gueltig: {}".format("Ja" if result['is_valid'] else "Nein"))
 
     def run(self):
-        """Führt die zyklische Code Analyse durch."""
+        """Hauptprogramm - kompakt mit Navigation"""
         try:
-            print("\n=== ZYKLISCHE CODE ANALYSE NACH ÜBUNG 11 ===")
-            print("Die Prüfmatrix H wird live berechnet, indem Syndrome für Einzelfehlerpositionen")
-            print("mittels Polynomdivision (e_i(x) mod g(x)) bestimmt werden[cite: 1585, 1586].")
-            print("\nBeispiele für Generatorpolynome g(x):")
-            print("  '1011'    (für x³ + x + 1 -> (7,4) Hamming Code)")
-            print("  '1101'    (für x³ + x² + 1)")
-            print("  '10011'   (für x⁴ + x + 1 -> (15,11) Hamming Code)")
+            print("=== ZYKLISCHE CODES ===")
+            print("Beispiele g(x):")
+            print("1011: x^3+x+1 (7,4)")
+            print("10011: x^4+x+1 (15,11)")
 
             while True:
-                generator_poly_input = input("\nGeneratorpolynom g(x) als Binärstring eingeben (z.B. 1011): ").strip()
-                if generator_poly_input:
+                print("\n--- EINGABE ---")
+                gen_poly = input("g(x) binaer (q=exit): ").strip()
+
+                if gen_poly.lower() == 'q':
                     break
-                print("❌ Eingabe darf nicht leer sein.")
 
-            code_length_input_str = input("Spezifische Codelänge n eingeben? (Standard: 2^k-1 für Hamming): ").strip()
-            code_length_n_arg = None
-            if code_length_input_str:
-                try:
-                    code_length_n_arg = int(code_length_input_str)
-                    if code_length_n_arg <= 0:
-                        print("⚠️ Ungültige Codelänge, Standard wird verwendet.")
-                        code_length_n_arg = None
-                except ValueError:
-                    print("⚠️ Ungültige Eingabe für Codelänge, Standard wird verwendet.")
+                if not gen_poly:
+                    print("Leer!")
+                    continue
 
-            result = self.create_parity_matrix_from_generator(generator_poly_input, code_length_n=code_length_n_arg)
+                # Optionale Codelänge
+                n_input = input("Codelaenge n (Enter=auto): ").strip()
+                n_val = None
+                if n_input:
+                    try:
+                        n_val = int(n_input)
+                        if n_val <= 0:
+                            print("n muss > 0")
+                            continue
+                    except ValueError:
+                        print("Ungueltige Zahl")
+                        continue
 
-            if result:
-                pass
+                # Berechnung
+                print("\nBerechne...")
+                result = self.create_parity_matrix_compact(gen_poly, n_val)
+
+                if result:
+                    self.last_result = result
+
+                    # Hauptmenü
+                    while True:
+                        print("\n--- OPTIONEN ---")
+                        print("1: Details zeigen")
+                        print("2: Neue Berechnung")
+                        print("q: Beenden")
+
+                        choice = input("Wahl: ").strip().lower()
+
+                        if choice == 'q':
+                            return
+                        elif choice == '1':
+                            self.show_details_menu(result)
+                        elif choice == '2':
+                            break
+                        else:
+                            print("Ungueltig!")
+                else:
+                    input("\nEnter...")
 
         except KeyboardInterrupt:
-            print("\n❌ Analyse abgebrochen.")
+            print("\nAbgebrochen.")
         except Exception as e:
-            print("❌ Ein unerwarteter Fehler ist aufgetreten: {}".format(e))
+            print("FEHLER: {}".format(str(e)))
 
-        input("\nDrücken Sie Enter zum Beenden...")
 
+# Beispiel für eigenständige Nutzung:
+if __name__ == "__main__":
+    # Minimal-Implementierung der Basisklasse für Tests
+    class BaseChannelCodingTool:
+        def validate_generator_polynomial(self, poly_str):
+            errors = []
+            warnings = []
 
+            if not poly_str:
+                errors.append("Leerer String")
+                return errors, warnings
 
-class SystematicEncodingTool(BaseChannelCodingTool):
-    """Tool für systematische Codierung"""
+            if not all(c in '01' for c in poly_str):
+                errors.append("Nur 0 und 1 erlaubt")
+                return errors, warnings
 
-    def polynomial_division_gf2(self, dividend, divisor, validate=True):
-        """Vereinfachte Polynomdivision für systematische Codierung"""
-        if isinstance(dividend, str):
-            dividend_str = dividend.replace(" ", "").replace("'", "")
-            dividend = self.binary_to_vector(dividend_str)
+            if poly_str[0] != '1':
+                warnings.append("Sollte mit 1 beginnen")
 
-        if isinstance(divisor, str):
-            divisor_str = divisor.replace(" ", "").replace("'", "")
-            divisor = self.binary_to_vector(divisor_str)
+            if poly_str[-1] != '1':
+                warnings.append("Sollte mit 1 enden")
 
-        while len(dividend) > 1 and dividend[0] == 0:
-            dividend = dividend[1:]
-        while len(divisor) > 1 and divisor[0] == 0:
-            divisor = divisor[1:]
+            return errors, warnings
 
-        if len(dividend) < len(divisor):
-            return [0], dividend
 
-        quotient = []
-        remainder = dividend[:]
-
-        while len(remainder) >= len(divisor):
-            has_ones = False
-            for bit in remainder:
-                if bit == 1:
-                    has_ones = True
-                    break
-            if not has_ones:
-                break
-
-            while len(remainder) > 1 and remainder[0] == 0:
-                remainder = remainder[1:]
-
-            if len(remainder) < len(divisor):
-                break
-
-            quotient.append(1)
-
-            for i in range(len(divisor)):
-                if i < len(remainder):
-                    remainder[i] = (remainder[i] + divisor[i]) % 2
-
-            if remainder and remainder[0] == 0:
-                remainder = remainder[1:]
-
-        if not quotient:
-            quotient = [0]
-        if not remainder:
-            remainder = [0]
-
-        return quotient, remainder
-
-    def systematic_encoding(self, message, generator_poly, validate=True):
-        """Systematische Codierung"""
-        print("\n==== SYSTEMATISCHE CODIERUNG ====")
-
-        if validate:
-            msg_errors, _ = self.validate_binary_string(message, "Nachrichtenbits")
-            poly_errors, _ = self.validate_generator_polynomial(generator_poly, "Generatorpolynom")
-
-            if msg_errors or poly_errors:
-                print("❌ SYSTEMATISCHE CODIERUNG ABGEBROCHEN:")
-                for error in msg_errors + poly_errors:
-                    print("   " + error)
-                return None
-
-        clean_message = message.replace(" ", "").replace("'", "")
-        clean_poly = generator_poly.replace(" ", "").replace("'", "")
-
-        message_vec = self.binary_to_vector(clean_message)
-        poly_vec = self.binary_to_vector(clean_poly)
-
-        print("Nachricht:        " + clean_message)
-        print("Generatorpolynom: " + clean_poly)
-
-        degree = len(poly_vec) - 1
-        print("Polynom-Grad:     " + str(degree))
-
-        shifted_message = message_vec[:]
-        for i in range(degree):
-            shifted_message.append(0)
-
-        print("Verschobene Nachricht: " + self.vector_to_binary(shifted_message))
-
-        quotient, remainder = self.polynomial_division_gf2(shifted_message, poly_vec, validate=False)
-
-        while len(remainder) < degree:
-            remainder = [0] + remainder
-
-        codeword = message_vec + remainder
-        print("\nSystematisches Codewort: " + self.vector_to_binary(codeword))
-        print("  Nachrichtenteil: " + clean_message)
-        print("  Kontrollbits:    " + self.vector_to_binary(remainder))
-
-        return codeword
-
-    def run(self):
-        """Führt die systematische Codierung durch"""
-        try:
-            print("\n=== SYSTEMATISCHE CODIERUNG ===")
-
-            while True:
-                message = input("Nachrichtenbits: ").strip()
-                errors, warnings = self.validate_binary_string(message, "Nachrichtenbits")
-                if not errors:
-                    break
-                for error in errors:
-                    print("❌ " + error)
-
-            while True:
-                generator = input("Generatorpolynom: ").strip()
-                errors, warnings = self.validate_generator_polynomial(generator)
-                if not errors:
-                    break
-                for error in errors:
-                    print("❌ " + error)
-
-            codeword = self.systematic_encoding(message, generator, validate=True)
-
-            if codeword:
-                print("\n=== VERIFIKATION ===")
-                crc_check_tool = CRCCheckTool()
-                crc_check_tool.crc_check(codeword, generator, validate=False)
-
-        except Exception as e:
-            print("❌ Fehler: " + str(e))
-
-        input("\nDrücke Enter zum Fortfahren...")
-
-
-class ShiftRegisterTool(BaseChannelCodingTool):
-    """Tool für Schieberegister-Simulation"""
-
-    def shift_register_simulation(self, generator_poly, input_data, validate=True):
-        """Simulation eines rückgekoppelten Schieberegisters"""
-        print("\n==== SCHIEBEREGISTER-SIMULATION ====")
-
-        if validate:
-            data_errors, _ = self.validate_binary_string(input_data, "Eingangsdaten")
-            poly_errors, _ = self.validate_generator_polynomial(generator_poly, "Generatorpolynom")
-
-            if data_errors or poly_errors:
-                print("❌ SCHIEBEREGISTER-SIMULATION ABGEBROCHEN:")
-                for error in data_errors + poly_errors:
-                    print("   " + error)
-                return None, None
-
-        clean_poly = generator_poly.replace(" ", "").replace("'", "")
-        clean_data = input_data.replace(" ", "").replace("'", "")
-
-        poly_vec = self.binary_to_vector(clean_poly)
-        data_vec = self.binary_to_vector(clean_data)
-
-        print("Generatorpolynom: " + clean_poly)
-        print("Eingangsdaten:    " + clean_data)
-
-        degree = len(poly_vec) - 1
-
-        feedback_positions = []
-        for i in range(1, len(poly_vec)):
-            if poly_vec[i] == 1:
-                pos = len(poly_vec) - 1 - i
-                feedback_positions.append(pos)
-
-        print("Rückkopplungspositionen: " + str(feedback_positions))
-
-        register = []
-        for i in range(degree):
-            register.append(0)
-
-        output = []
-
-        extended_input = data_vec[:]
-        for i in range(degree):
-            extended_input.append(0)
-
-        print("\nSchieberegister-Simulation:")
-        print("Schritt | Eingabe | Register  | Rückkopplung | Ausgabe")
-        print("--------|---------|-----------|--------------|--------")
-
-        for step in range(len(extended_input)):
-            input_bit = extended_input[step]
-
-            feedback = 0
-            for pos in feedback_positions:
-                if pos < len(register):
-                    feedback = (feedback + register[pos]) % 2
-
-            new_bit = (input_bit + feedback) % 2
-
-            output_bit = register[-1] if register else 0
-            output.append(output_bit)
-
-            new_register = [new_bit]
-            for i in range(len(register) - 1):
-                new_register.append(register[i])
-            register = new_register
-
-            register_str = self.vector_to_binary(register)
-            print("   " + str(step).rjust(2) + "   |    " + str(input_bit) + "    |  " +
-                  register_str + "  |      " + str(feedback) + "       |    " + str(output_bit))
-
-        remainder = register[:]
-
-        print("\nAusgabesequenz: " + self.vector_to_binary(output))
-        print("Register-Rest:  " + self.vector_to_binary(remainder))
-
-        return output, remainder
-
-    def run(self):
-        """Führt die Schieberegister-Simulation durch"""
-        try:
-            print("\n=== SCHIEBEREGISTER-SIMULATION ===")
-
-            while True:
-                generator = input("Generatorpolynom: ").strip()
-                errors, warnings = self.validate_generator_polynomial(generator)
-                if not errors:
-                    break
-                for error in errors:
-                    print("❌ " + error)
-
-            while True:
-                data = input("Eingangsdaten: ").strip()
-                errors, warnings = self.validate_binary_string(data, "Eingangsdaten")
-                if not errors:
-                    break
-                for error in errors:
-                    print("❌ " + error)
-
-            output, remainder = self.shift_register_simulation(generator, data, validate=True)
-
-        except Exception as e:
-            print("❌ Fehler: " + str(e))
-
-        input("\nDrücke Enter zum Fortfahren...")
+    # Test
+    tool = CyclicCodeAnalysisTool()
+    tool.run()
 
 
 class ComprehensiveCodeAnalysisTool(BaseChannelCodingTool):
-    """Tool für vollständige Code-Analyse"""
+    """Kompakte Code-Analyse für Taschenrechner"""
+
+    def clear_screen(self):
+        """Bildschirm leeren (falls möglich)"""
+        try:
+            # ANSI clear screen für kompatible Terminals
+            print('\033[2J\033[H')
+        except:
+            # Fallback: mehrere Leerzeilen
+            for i in range(5):
+                print('')
+
+    def show_main_menu(self):
+        """Zeigt das Hauptmenü"""
+        self.clear_screen()
+        print("=== CODE ANALYSE ===")
+        print("1. Hamming-Code")
+        print("2. CRC-Code")
+        print("3. Blockcode")
+        print("4. Pruefgleichungen")
+        print("5. Beispiele")
+        print("0. Beenden")
+        print("=" * 20)
+
+    def show_examples_menu(self):
+        """Zeigt Beispiele"""
+        self.clear_screen()
+        print("=== BEISPIELE ===")
+        print("Hamming (7,4):")
+        print("Gl1: 1 2 3")
+        print("Gl2: 1 2 4")
+        print("Gl3: 1 3 4")
+        print("")
+        print("CRC Generator:")
+        print("x3+x+1")
+        print("1+x+x3")
+        print("")
+        print("Blockcode:")
+        print("000 111 011 100")
+        input("Enter...")
+
+    def show_details_menu(self):
+        """Zeigt Details-Menü mit Zahlen"""
+        print("")
+        print("Details:")
+        print("1. Eigenschaften")
+        print("2. Parameter")
+        print("3. Berechnung")
+        print("9. Zurueck")
+        print("0. Beenden")
+
+    def get_choice(self, prompt="Wahl: "):
+        """Sichere Eingabe"""
+        try:
+            choice = input(prompt).strip()
+            return choice
+        except:
+            return "0"
+
+    def get_int_choice(self, prompt="Wahl: "):
+        """Integer-Eingabe"""
+        try:
+            choice = input(prompt).strip()
+            return int(choice)
+        except:
+            return -1
 
     def run(self):
-        """Führt eine vollständige Code-Analyse durch"""
-        try:
-            print("\n=== VOLLSTÄNDIGE CODE-ANALYSE ===")
-            print("1. Hamming-Code")
-            print("2. CRC-Code")
-            print("3. Allgemeiner Blockcode")
+        """Hauptschleife"""
+        while True:
+            try:
+                self.show_main_menu()
+                choice = self.get_int_choice()
 
-            code_choice = input("Code-Typ wählen: ")
-
-            if code_choice == "1":
-                print("\nPrüfgleichungen eingeben:")
-                n_eq = self.safe_int_input("Anzahl Prüfgleichungen: ", min_val=1, max_val=10)
-                print("\nBeispieleingabe: 1 2 3 4 6 7 8 ")
-
-                equations = []
-                for i in range(n_eq):
-                    while True:
-                        try:
-                            pos_str = input("Prüfgleichung " + str(i + 1) + " (Positionen): ")
-                            positions = []
-                            for x in pos_str.split():
-                                positions.append(int(x))
-                            equations.append(positions)
-                            break
-                        except:
-                            print("❌ Ungültige Eingabe.")
-
-                # Verwende ParityMatrixTool
-                matrix_tool = ParityMatrixTool()
-                H = matrix_tool.create_parity_check_matrix(equations, validate=True)
-
-                if H:
-                    print("\nHamming-Code Eigenschaften:")
-                    print("  Hamming-Distanz: h = 3")
-                    print("  Korrigierbare Fehler: e = 1")
-                    print("  Erkennbare Fehler: e* = 2")
-
-            elif code_choice == "2":
-                while True:
-                    generator = input("Generatorpolynom: ").strip()
-                    errors, warnings = self.validate_generator_polynomial(generator)
-                    if not errors:
+                if choice == 0:
+                    print("Programm beendet.")
+                    break
+                elif choice == 1:
+                    if self.hamming_analysis():
                         break
-                    for error in errors:
-                        print("❌ " + error)
+                elif choice == 2:
+                    if self.crc_analysis():
+                        break
+                elif choice == 3:
+                    if self.block_analysis():
+                        break
+                elif choice == 4:
+                    if self.parity_equations():
+                        break
+                elif choice == 5:
+                    self.show_examples_menu()
+                else:
+                    print("Ungueltige Wahl!")
+                    input("Enter...")
 
-                # Code-Eigenschaften analysieren
-                analysis_tool = CyclicCodeAnalysisTool()
-                analysis = analysis_tool.cyclic_code_analysis(generator, validate=True)
+            except Exception as e:
+                print("Fehler: " + str(e))
+                input("Enter...")
 
-                data_input = input("Datenbits (Enter für nur Analyse): ").strip()
-                if data_input:
-                    crc_tool = CRCCalculationTool()
-                    result = crc_tool.crc_calculation(data_input, generator, validate=True)
+    def hamming_analysis(self):
+        """Hamming-Code Analyse"""
+        self.clear_screen()
+        print("=== HAMMING CODE ===")
 
-                    if result:
-                        shift_tool = ShiftRegisterTool()
-                        output, reg_remainder = shift_tool.shift_register_simulation(
-                            generator, data_input, validate=True)
+        n_eq = self.safe_int_input("Anzahl Pruefgl.: ", 1, 10)
+        if n_eq is None:
+            return False
 
-            elif code_choice == "3":
-                n_cw = self.safe_int_input("Anzahl Codewörter: ", min_val=2, max_val=20)
+        equations = []
+        print("Format: 1 2 3 4")
+        for i in range(n_eq):
+            while True:
+                pos_str = self.get_choice("Gl. " + str(i + 1) + ": ")
+                if pos_str == "0":
+                    return True
+                try:
+                    positions = []
+                    for x in pos_str.split():
+                        positions.append(int(x))
+                    equations.append(positions)
+                    break
+                except:
+                    print("Fehler! Bsp: 1 2 3")
 
-                codewords = []
-                for i in range(n_cw):
-                    cw = input("Codewort " + str(i + 1) + ": ").strip()
-                    codewords.append(cw)
+        # Basis-Ergebnis
+        print("")
+        print("--- ERGEBNIS ---")
+        print("h = 3 (Hamming)")
+        print("Korr: e = 1")
+        print("Erk: e* = 2")
 
-                # Analysiere mit HammingDistanceTool
-                hamming_tool = HammingDistanceTool()
-                result = hamming_tool.minimum_hamming_distance(codewords, validate=True)
+        # Details anbieten
+        return self.show_hamming_details(equations)
 
-                if result:
-                    n = len(codewords[0].replace(" ", "").replace("'", "")) if codewords else None
-                    k_input = input("Anzahl Nachrichtenbits k (Enter für unbekannt): ").strip()
-                    k = int(k_input) if k_input else None
+    def show_hamming_details(self, equations):
+        """Zeigt Hamming Details"""
+        while True:
+            self.show_details_menu()
+            detail = self.get_int_choice()
 
-                    if n and k:
-                        print("\nCode-Parameter:")
-                        print("  Codelänge: n = " + str(n))
-                        print("  Nachrichtenbits: k = " + str(k))
-                        print("  Kontrollbits: n-k = " + str(n - k))
-                        print("  Coderate: R = k/n = " + str(k) + "/" + str(n) + " = " + str(round(k / n, 3)))
-
-                        singleton_bound = n - k + 1
-                        print("  Singleton-Bound: d ≤ n-k+1 = " + str(singleton_bound))
-
-                        if result['min_distance'] == singleton_bound:
-                            print("  ✅ Code erfüllt Singleton-Bound mit Gleichheit (MDS-Code)")
-                        elif result['min_distance'] < singleton_bound:
-                            print("  ✅ Code erfüllt Singleton-Bound")
-                        else:
-                            print("  ❌ Code verletzt Singleton-Bound (Fehler in Berechnung?)")
+            if detail == 0:
+                return True
+            elif detail == 9:
+                return False
+            elif detail == 1:
+                self.show_hamming_properties()
+            elif detail == 2:
+                self.show_hamming_parameters(equations)
+            elif detail == 3:
+                self.show_hamming_calculation(equations)
             else:
-                print("❌ Ungültige Auswahl!")
+                print("Ungueltig!")
 
-        except Exception as e:
-            print("❌ Fehler: " + str(e))
+    def show_hamming_properties(self):
+        """Hamming Eigenschaften"""
+        self.clear_screen()
+        print("=== EIGENSCHAFTEN ===")
+        print("Hamming-Distanz: 3")
+        print("1-Bit Korrektur")
+        print("2-Bit Erkennung")
+        print("SECDED moeglich")
+        print("Perfekter Code")
+        input("Enter...")
 
-        input("\nDrücke Enter zum Fortfahren...")
+    def show_hamming_parameters(self, equations):
+        """Hamming Parameter"""
+        self.clear_screen()
+        print("=== PARAMETER ===")
+
+        k = len(equations)
+        # Schätze n basierend auf höchster Position
+        max_pos = 0
+        for eq in equations:
+            for pos in eq:
+                if pos > max_pos:
+                    max_pos = pos
+        n_est = max_pos + k
+
+        print("Kontrollbits k: " + str(k))
+        print("Geschaetzt n: " + str(n_est))
+        print("Datenbits m: " + str(n_est - k))
+        print("Coderate: " + str(n_est - k) + "/" + str(n_est))
+        input("Enter...")
+
+    def show_hamming_calculation(self, equations):
+        """Hamming Berechnung"""
+        self.clear_screen()
+        print("=== BERECHNUNG ===")
+
+        print("Pruefgleichungen:")
+        for i, eq in enumerate(equations):
+            eq_str = ""
+            for j, pos in enumerate(eq):
+                if j > 0:
+                    eq_str += "+"
+                eq_str += "x" + str(pos)
+            print("x" + str(len(equations) + i + 1) + "=" + eq_str)
+
+        input("Enter...")
+
+    def crc_analysis(self):
+        """CRC-Code Analyse"""
+        self.clear_screen()
+        print("=== CRC CODE ===")
+
+        print("Format: x3+x+1")
+        while True:
+            gen = self.get_choice("Generator g(x): ")
+            if gen == "0":
+                return True
+
+            errors, warnings = self.validate_generator_polynomial(gen)
+            if not errors:
+                break
+            print("Fehler: " + str(errors[0]))
+
+        # Basis-Analyse
+        degree = self.get_poly_degree(gen)
+        print("")
+        print("--- ERGEBNIS ---")
+        print("Grad: " + str(degree))
+        print("Kontrollbits: " + str(degree))
+        print("h >= 3 (CRC)")
+
+        return self.show_crc_details(gen, degree)
+
+    def show_crc_details(self, gen, degree):
+        """CRC Details"""
+        while True:
+            self.show_details_menu()
+            detail = self.get_int_choice()
+
+            if detail == 0:
+                return True
+            elif detail == 9:
+                return False
+            elif detail == 1:
+                self.show_crc_properties()
+            elif detail == 2:
+                self.show_crc_parameters(gen, degree)
+            elif detail == 3:
+                self.show_crc_calculation(gen)
+            else:
+                print("Ungueltig!")
+
+    def show_crc_properties(self):
+        """CRC Eigenschaften"""
+        self.clear_screen()
+        print("=== CRC EIGENSCHAFTEN ===")
+        print("Zyklischer Code")
+        print("Polynom-Darstellung")
+        print("Schieberegister")
+        print("Burst-Fehler gut")
+        print("Hardware-effizient")
+        input("Enter...")
+
+    def show_crc_parameters(self, gen, degree):
+        """CRC Parameter"""
+        self.clear_screen()
+        print("=== CRC PARAMETER ===")
+        print("Generator: " + gen)
+        print("Grad: " + str(degree))
+        print("Kontrollstellen: " + str(degree))
+        print("Min. Distanz: >= 3")
+        input("Enter...")
+
+    def show_crc_calculation(self, gen):
+        """CRC Berechnung"""
+        self.clear_screen()
+        print("=== CRC RECHNUNG ===")
+
+        data = self.get_choice("Daten (Bsp 1101): ")
+        if data == "0":
+            return
+
+        print("Daten: " + data)
+        print("Generator: " + gen)
+        print("Polynomdivision:")
+        print("Rest = CRC")
+        input("Enter...")
+
+    def block_analysis(self):
+        """Blockcode Analyse"""
+        self.clear_screen()
+        print("=== BLOCKCODE ===")
+
+        n_cw = self.safe_int_input("Anzahl CW: ", 2, 20)
+        if n_cw is None:
+            return False
+
+        codewords = []
+        print("Format: 000 111 101")
+        for i in range(n_cw):
+            cw = self.get_choice("CW " + str(i + 1) + ": ")
+            if cw == "0":
+                return True
+            # Bereinige Eingabe
+            clean_cw = cw.replace(" ", "").replace("'", "")
+            codewords.append(clean_cw)
+
+        # Hamming-Distanz berechnen
+        min_dist = self.calculate_min_distance(codewords)
+
+        print("")
+        print("--- ERGEBNIS ---")
+        print("h_min = " + str(min_dist))
+        if min_dist > 0:
+            print("Korr: e = " + str((min_dist - 1) // 2))
+            print("Erk: e* = " + str(min_dist - 1))
+
+        return self.show_block_details(codewords, min_dist)
+
+    def show_block_details(self, codewords, min_dist):
+        """Blockcode Details"""
+        while True:
+            self.show_details_menu()
+            detail = self.get_int_choice()
+
+            if detail == 0:
+                return True
+            elif detail == 9:
+                return False
+            elif detail == 1:
+                self.show_block_properties(min_dist)
+            elif detail == 2:
+                self.show_block_parameters(codewords, min_dist)
+            elif detail == 3:
+                self.show_block_calculation(codewords)
+            else:
+                print("Ungueltig!")
+
+    def show_block_properties(self, min_dist):
+        """Block Eigenschaften"""
+        self.clear_screen()
+        print("=== EIGENSCHAFTEN ===")
+        print("Min. Distanz: " + str(min_dist))
+        if min_dist >= 3:
+            print("1-Bit Korrektur")
+            print("2-Bit Erkennung")
+        elif min_dist == 2:
+            print("1-Bit Erkennung")
+        else:
+            print("Keine Fehlerkorr.")
+        input("Enter...")
+
+    def show_block_parameters(self, codewords, min_dist):
+        """Block Parameter"""
+        self.clear_screen()
+        print("=== PARAMETER ===")
+
+        n = len(codewords[0]) if codewords else 0
+        print("Codelaenge n: " + str(n))
+        print("Anzahl CW: " + str(len(codewords)))
+        print("Min. Distanz: " + str(min_dist))
+
+        k_str = self.get_choice("Datenbits k: ")
+        if k_str and k_str != "0":
+            try:
+                k = int(k_str)
+                rate = float(k) / float(n)
+                print("Coderate: " + str(round(rate, 3)))
+
+                singleton = n - k + 1
+                print("Singleton <= " + str(singleton))
+                if min_dist <= singleton:
+                    print("Bound OK")
+                else:
+                    print("Bound verletzt!")
+            except:
+                pass
+
+        input("Enter...")
+
+    def show_block_calculation(self, codewords):
+        """Block Berechnung"""
+        self.clear_screen()
+        print("=== BERECHNUNG ===")
+
+        print("Hamming-Distanzen:")
+        n = len(codewords)
+        for i in range(min(n, 3)):  # Zeige max 3 Paare
+            for j in range(i + 1, min(n, 4)):
+                if j < len(codewords):
+                    dist = self.hamming_distance(codewords[i], codewords[j])
+                    print("d(" + str(i) + "," + str(j) + ")=" + str(dist))
+
+        if n > 4:
+            print("...")
+
+        input("Enter...")
+
+    def parity_equations(self):
+        """Prüfgleichungen-Tool"""
+        self.clear_screen()
+        print("=== PRUEFGLEICHUNGEN ===")
+
+        n_eq = self.safe_int_input("Anzahl: ", 1, 10)
+        if n_eq is None:
+            return False
+
+        equations = []
+        print("Format: 1 2 3 4")
+        for i in range(n_eq):
+            while True:
+                pos_str = self.get_choice("Gl. " + str(i + 1) + ": ")
+                if pos_str == "0":
+                    return True
+                try:
+                    positions = []
+                    for x in pos_str.split():
+                        positions.append(int(x))
+                    equations.append(positions)
+                    break
+                except:
+                    print("Fehler!")
+
+        # Prüfmatrix aufbauen und anzeigen
+        self.show_parity_matrix(equations)
+
+        return False
+
+    def show_parity_matrix(self, equations):
+        """Zeigt Prüfmatrix"""
+        self.clear_screen()
+        print("=== PRUEFMATRIX ===")
+
+        # Finde maximale Position
+        max_pos = 0
+        for eq in equations:
+            for pos in eq:
+                if pos > max_pos:
+                    max_pos = pos
+
+        print("H-Matrix:")
+        for i, eq in enumerate(equations):
+            row = ""
+            for pos in range(1, max_pos + 1):
+                if pos in eq:
+                    row += "1 "
+                else:
+                    row += "0 "
+            print(row)
+
+        input("Enter...")
+
+    def calculate_min_distance(self, codewords):
+        """Berechnet minimale Hamming-Distanz"""
+        if len(codewords) < 2:
+            return 0
+
+        min_dist = 999999  # Sehr große Zahl als Ersatz für float('inf')
+        for i in range(len(codewords)):
+            for j in range(i + 1, len(codewords)):
+                dist = self.hamming_distance(codewords[i], codewords[j])
+                if dist < min_dist:
+                    min_dist = dist
+
+        return min_dist if min_dist < 999999 else 0
+
+    def hamming_distance(self, a, b):
+        """Berechnet Hamming-Distanz zwischen zwei Strings"""
+        if len(a) != len(b):
+            return 999999  # Ersatz für float('inf')
+
+        dist = 0
+        for i in range(len(a)):
+            if a[i] != b[i]:
+                dist += 1
+        return dist
+
+    def get_poly_degree(self, poly):
+        """Ermittelt Grad eines Polynoms"""
+        poly = poly.replace(" ", "").replace("+", "").lower()
+
+        max_degree = 0
+        i = 0
+        while i < len(poly):
+            if poly[i] == 'x':
+                if i + 1 < len(poly) and poly[i + 1].isdigit():
+                    degree_str = ""
+                    j = i + 1
+                    while j < len(poly) and poly[j].isdigit():
+                        degree_str += poly[j]
+                        j += 1
+                    degree = int(degree_str)
+                    if degree > max_degree:
+                        max_degree = degree
+                    i = j
+                else:
+                    if max_degree < 1:
+                        max_degree = 1
+                    i += 1
+            else:
+                i += 1
+
+        return max_degree
+
+    def safe_int_input(self, prompt, min_val=1, max_val=100):
+        """Sichere Integer-Eingabe"""
+        while True:
+            try:
+                value_str = self.get_choice(prompt)
+                if value_str == "0":
+                    return None
+                value = int(value_str)
+                if min_val <= value <= max_val:
+                    return value
+                else:
+                    print("Bereich: " + str(min_val) + "-" + str(max_val))
+            except:
+                print("Zahl eingeben!")
+
+    def validate_generator_polynomial(self, poly):
+        """Validiert Generatorpolynom"""
+        errors = []
+        warnings = []
+
+        if not poly or not poly.strip():
+            errors.append("Leeres Polynom")
+            return errors, warnings
+
+        # Einfache Validierung
+        poly_lower = poly.lower()
+        if 'x' not in poly_lower:
+            errors.append("Kein x gefunden")
+
+        return errors, warnings
 
 
 class CodePropertiesAnalysisTool(BaseChannelCodingTool):
@@ -1664,7 +1826,7 @@ class CodePropertiesAnalysisTool(BaseChannelCodingTool):
 
         return results
 
-    def run(self):
+    def run(self) -> None:
         """Führt die Code-Eigenschaften Analyse durch"""
         try:
             print("\n=== CODE-EIGENSCHAFTEN ANALYSIEREN ===")

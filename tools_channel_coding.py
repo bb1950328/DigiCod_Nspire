@@ -1031,7 +1031,10 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             error_str = "".join(error_poly)
 
             _, syndrome_str = self.polynomial_division_gf2(error_str, generator_poly_str)
-            syndrome_str = syndrome_str.zfill(k)
+
+            # ERSATZ für zfill(k) - manuelles Auffüllen mit führenden Nullen
+            if len(syndrome_str) < k:
+                syndrome_str = ('0' * (k - len(syndrome_str))) + syndrome_str
 
             if len(syndrome_str) > k:
                 syndrome_str = syndrome_str[-k:]
@@ -1220,36 +1223,6 @@ class CyclicCodeAnalysisTool(BaseChannelCodingTool):
             print("\nAbgebrochen.")
         except Exception as e:
             print("FEHLER: {}".format(str(e)))
-
-
-# Beispiel für eigenständige Nutzung:
-if __name__ == "__main__":
-    # Minimal-Implementierung der Basisklasse für Tests
-    class BaseChannelCodingTool:
-        def validate_generator_polynomial(self, poly_str):
-            errors = []
-            warnings = []
-
-            if not poly_str:
-                errors.append("Leerer String")
-                return errors, warnings
-
-            if not all(c in '01' for c in poly_str):
-                errors.append("Nur 0 und 1 erlaubt")
-                return errors, warnings
-
-            if poly_str[0] != '1':
-                warnings.append("Sollte mit 1 beginnen")
-
-            if poly_str[-1] != '1':
-                warnings.append("Sollte mit 1 enden")
-
-            return errors, warnings
-
-
-    # Test
-    tool = CyclicCodeAnalysisTool()
-    tool.run()
 
 
 class ComprehensiveCodeAnalysisTool(BaseChannelCodingTool):

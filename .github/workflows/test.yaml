@@ -51,7 +51,7 @@ jobs:
 
     - name: Run test_unit.py with MicroPython
       run: |
-        $MICROPYTHON test.py
+        $MICROPYTHON test_unit.py
 
     - name: Run test_interaction.py
       if: always()

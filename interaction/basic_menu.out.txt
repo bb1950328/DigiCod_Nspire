@@ -23,5 +23,5 @@ Nr:
 3 Kanalcodierung
 4 Faltungscode
 5 Kanalmodell
-6 Binärumrechnung
+6 Binärumrechnun
 Nr: 

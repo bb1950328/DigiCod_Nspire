@@ -486,7 +486,7 @@ class LZW(Tool):
         input()
 
 
-class InfoAnalyseTool:
+class InfoAnalyseTool(Tool):
     def __init__(self):
         self.symbols = []
         self.probs = []

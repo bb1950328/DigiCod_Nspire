@@ -1,4 +1,7 @@
-class BaseChannelCodingTool:
+import tool_base
+
+
+class BaseChannelCodingTool(tool_base.Tool):
     """Basis-Klasse für alle Kanalcodierung-Tools mit gemeinsamen Funktionen"""
 
     def __init__(self):

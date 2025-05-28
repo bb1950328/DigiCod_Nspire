@@ -6,7 +6,8 @@
 4 Faltungscode
 5 Kanalmodell
 6 Binärumrechnung
-Nr: 
+Nr: 1
+
 # 1 Entropie und Kompression
 1 Entropie berechnen
 2 Redundanz berechnen
@@ -15,6 +16,7 @@ Nr:
 5 Lempel-Ziv LZW
 6 Vollständige Analyse
 Nr: 
+
 # Hauptmenü
 1 Entropie und Kompression
 2 RSA

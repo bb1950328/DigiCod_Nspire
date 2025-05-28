@@ -1,5 +1,4 @@
 import sys
-import traceback
 
 import menu
 import tool_base
@@ -45,7 +44,7 @@ def run_all_tests():
         try:
             func()
         except Exception as e:
-            print(traceback.format_exc(), file=sys.stderr)
+            sys.print_exception(e)
             fail = True
     if fail:
         sys.exit(1)

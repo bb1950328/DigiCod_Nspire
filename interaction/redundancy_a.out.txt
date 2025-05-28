@@ -1,0 +1,34 @@
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Binärumrechnung
+Nr: 1.2
+
+==== Redundanz berechnen ====
+Anzahl der Symbole: 4
+Wahrscheinlichkeit für Symbol 1: 0.5
+Codewortlänge für Symbol 1: 3
+Wahrscheinlichkeit für Symbol 2: 0.25
+Codewortlänge für Symbol 2: 6
+Wahrscheinlichkeit für Symbol 3: 0.15
+Codewortlänge für Symbol 3: 2
+Wahrscheinlichkeit für Symbol 4: 0.1
+Codewortlänge für Symbol 4: 2
+
+Redundanz: 1.757262 bits/Symbol
+
+Drücke Enter, um fortzufahren...
+
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Binärumrechnung
+Nr: 

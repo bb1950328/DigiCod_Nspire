@@ -1,0 +1,27 @@
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Binärumrechnung
+Nr: 1.1
+
+==== Entropie berechnen ====
+Anzahl der Symbole: 1
+Wahrscheinlichkeit für Symbol 1: 0.2
+
+Entropie: 0.464386 bits/Symbol
+
+Drücke Enter, um fortzufahren...
+
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Binärumrechnung
+Nr: 

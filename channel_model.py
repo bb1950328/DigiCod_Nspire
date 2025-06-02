@@ -6,7 +6,7 @@ class BaseChannelTool(Tool):
     """Basis-Klasse mit Validierungsfunktionen für alle Kanalmodell-Tools"""
 
     def __init__(self):
-        self.tolerance = 0.000001  # 1e-6 in MicroPython 3.4 kompatibel
+        self.tolerance = 0.000001
 
     def validate_probabilities(self, probs, name):
         """Validiert Wahrscheinlichkeitsverteilung"""
@@ -202,10 +202,6 @@ class BaseChannelTool(Tool):
                     print("\n⚠️  WARNUNGEN:")
                     for warning in warnings:
                         print("   " + warning)
-                    accept = input("\nTrotzdem fortfahren? (j/n/q): ").lower()
-                    if accept == 'q':
-                        return 'q'
-                    elif accept == 'j':
                         return channel_matrix
                     else:
                         print("Bitte Matrix korrigieren:")

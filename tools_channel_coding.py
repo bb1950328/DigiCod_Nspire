@@ -1277,6 +1277,7 @@ class ComprehensiveCodeAnalysisTool(BaseChannelCodingTool):
         print("1. Eigenschaften")
         print("2. Parameter")
         print("3. Berechnung")
+        print("4. Matrix")
         print("9. Zurueck")
         print("0. Beenden")
 
@@ -1379,6 +1380,8 @@ class ComprehensiveCodeAnalysisTool(BaseChannelCodingTool):
                 self.show_hamming_parameters(equations)
             elif detail == 3:
                 self.show_hamming_calculation(equations)
+            elif detail == 4:
+                self.show_parity_matrix(equations)
             else:
                 print("Ungueltig!")
 
@@ -1829,7 +1832,7 @@ class CodePropertiesAnalysisTool(BaseChannelCodingTool):
                     if not errors:
                         break
                     for error in errors:
-                        print("❌ " + error)
+                        print(" " + error)
 
             # Führe Analyse durch
             results = self.code_properties_analysis(

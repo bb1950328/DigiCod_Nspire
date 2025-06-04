@@ -50,14 +50,15 @@ TOOLS = [
         tool_base.ToolEntry(7, "Vollständige Kanalanalyse", channel_model.ComprehensiveChannelAnalysisTool),
     ]),
 
-    tool_base.ToolGroup(6, "Binärumrechnung", [
-        tool_base.ToolEntry(1, "Binär → Dezimal", tools_binary_conversion.BinToDec),
-        tool_base.ToolEntry(2, "Dezimal → Binär", tools_binary_conversion.DecToBin),
-        tool_base.ToolEntry(3, "Hexadezimal → Binär", tools_binary_conversion.HexToBin),
-        tool_base.ToolEntry(4, "2er-Komplement → Dezimal", tools_binary_conversion.TwosComplementToDecimal),
-        tool_base.ToolEntry(5, "Dezimal → 2er-Komplement", tools_binary_conversion.DecimalToTwosComplement),
-        tool_base.ToolEntry(6, "Float → Binär", tools_binary_conversion.FloatToBin),
-        tool_base.ToolEntry(7, "IEEE-754 analysieren", tools_binary_conversion.AnalyzeIEEE754),
+    tool_base.ToolGroup(6, "Umrechnungen", [
+        tool_base.ToolEntry(1, "Binär", tools_binary_conversion.BinaryConverter),
+        tool_base.ToolEntry(2, "Dezimal", tools_binary_conversion.DecimalConverter),
+        tool_base.ToolEntry(3, "Hexadezimal", tools_binary_conversion.HexConverter),
+        tool_base.ToolEntry(4, "2er-Komplement", tools_binary_conversion.TwosComplementConverter),
+        tool_base.ToolEntry(5, "Fixkommazahl", tools_binary_conversion.FixedPointConverter),
+        tool_base.ToolEntry(6, "Float", tools_binary_conversion.FloatConverter),
+        tool_base.ToolEntry(7, "Exzess", tools_binary_conversion.ExcessConverter),
+        tool_base.ToolEntry(8, "Oktal", tools_binary_conversion.OctalConverter),
     ]),
 ]
 def find_tool_by_path(path: list, tools: list):

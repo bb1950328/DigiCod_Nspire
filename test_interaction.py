@@ -23,7 +23,7 @@ def run_test(micropython_exe, input_file, output_file, update_mode=False):
     input_path = os.path.join('interaction', input_file)
     output_path = os.path.join('interaction', output_file)
     
-    # Run main.py with the given input file
+    print("Running {}...".format(input_file))
     with open(input_path, 'r') as f_in:
         result = subprocess.run(
             [micropython_exe, 'main.py'],
@@ -31,6 +31,9 @@ def run_test(micropython_exe, input_file, output_file, update_mode=False):
             text=True,
             capture_output=True
         )
+
+    if result.returncode != 0:
+        print(result.stderr, file=sys.stderr)
     
     actual_output = result.stdout
     

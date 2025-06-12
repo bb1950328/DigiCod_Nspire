@@ -504,116 +504,163 @@ class ExcessConverter(Tool):
 class TwosComplementConverter(Tool):
     def run(self):
         while True:
-            print("=== ZWEIERKOMPLEMENT ===")
-            print("1) Dezimal -> 2er-Kompl.")
-            print("2) 2er-Kompl. -> Dezimal")
-            print("3) Addition/Subtraktion")
-            print("4) Multiplikation")
-            print("q) Zurück")
+            print("2ER-KOMPLEMENT")
+            print("1) Dez->2er")
+            print("2) 2er->Dez")
+            print("3) +/-")
+            print("4) x")
+            print("0) Exit")
 
-            choice = input("Wahl: ").strip().lower()
-            if choice == 'q':
+            choice = input(">").strip()
+            if choice == '0':
                 break
+            elif choice == '1':
+                self._dez_to_2er()
+            elif choice == '2':
+                self._2er_to_dez()
+            elif choice == '3':
+                self._add_sub()
+            elif choice == '4':
+                self._mult()
 
-            if choice in ['1', '2', '3', '4']:
-                self._handle_twos_complement(choice)
-            else:
-                print("Ungültige Eingabe!")
-            print()
-
-    def _handle_twos_complement(self, choice):
+    def _dez_to_2er(self):
         try:
-            if choice == '1':  # Dezimal zu 2er-Komplement
-                decimal = int(input("Dezimalzahl (z.B. -5): "))
-                bits = int(input("Bit-Anzahl (z.B. 8): "))
+            print("DEZ -> 2ER")
+            d = int(input("Dez: "))
+            b = int(input("Bits: "))
 
-                if decimal >= 0:
-                    binary = format(decimal, '0{}b'.format(bits))
-                else:
-                    # 2er-Komplement berechnen
-                    positive = abs(decimal)
-                    max_val = 2 ** bits
-                    twos_comp = max_val - positive
-                    binary = format(twos_comp, '0{}b'.format(bits))
+            if d >= 0:
+                result = self._to_bin(d, b)
+            else:
+                pos = abs(d)
+                max_val = 2 ** b
+                tc = max_val - pos
+                result = self._to_bin(tc, b)
 
-                print("2er-Kompl.: {}".format(binary))
+            print("2er: " + result)
+            input("OK?")
+        except:
+            print("Fehler!")
+            input("OK?")
 
-            elif choice == '2':  # 2er-Komplement zu Dezimal
-                binary = input("2er-Kompl. (z.B. 11111011): ").strip()
+    def _2er_to_dez(self):
+        try:
+            print("2ER -> DEZ")
+            binary = input("2er: ")
 
-                decimal = self._twos_comp_to_decimal(binary)
-                print("Dezimal: {}".format(decimal))
+            if binary[0] == '1':
+                # Negativ
+                inv = ''
+                for b in binary:
+                    if b == '0':
+                        inv += '1'
+                    else:
+                        inv += '0'
+                result = -(int(inv, 2) + 1)
+            else:
+                # Positiv
+                result = int(binary, 2)
 
-            elif choice == '3':  # Addition/Subtraktion
-                a = input("2er-Kompl. A (z.B. 11111100): ").strip()
-                b = input("2er-Kompl. B (z.B. 00000011): ").strip()
-                op = input("Operation (+/-): ").strip()
+            print("Dez: " + str(result))
+            input("OK?")
+        except:
+            print("Fehler!")
+            input("OK?")
 
-                # Zu Dezimal konvertieren
-                dec_a = self._twos_comp_to_decimal(a)
-                dec_b = self._twos_comp_to_decimal(b)
+    def _add_sub(self):
+        try:
+            print("ADDITION/SUB")
+            a = input("A: ")
+            b = input("B: ")
+            op = input("+/-: ")
 
-                if op == '+':
-                    result_dec = dec_a + dec_b
-                elif op == '-':
-                    result_dec = dec_a - dec_b
-                else:
-                    print("Unbekannte Operation!")
-                    input("Enter zum Fortfahren...")
-                    return
+            # Zu Dezimal
+            dec_a = self._bin_to_dec(a)
+            dec_b = self._bin_to_dec(b)
 
-                # Zurück zu 2er-Komplement
-                bits = max(len(a), len(b))
-                result_bin = self._decimal_to_twos_comp(result_dec, bits)
+            if op == '+':
+                result_dec = dec_a + dec_b
+            elif op == '-':
+                result_dec = dec_a - dec_b
+            else:
+                print("Fehler!")
+                input("OK?")
+                return
 
-                print("Ergebnis: {}".format(result_bin))
-                print("Dezimal: {}".format(result_dec))
+            # Zurück zu 2er
+            bits = max(len(a), len(b))
+            result_bin = self._dec_to_2er(result_dec, bits)
 
-            elif choice == '4':  # Multiplikation
-                a = input("2er-Kompl. A (z.B. 1100): ").strip()
-                b = input("2er-Kompl. B (z.B. 0011): ").strip()
+            print("= " + result_bin)
+            print("(" + str(result_dec) + ")")
+            input("OK?")
+        except:
+            print("Fehler!")
+            input("OK?")
 
-                # Zu Dezimal konvertieren
-                dec_a = self._twos_comp_to_decimal(a)
-                dec_b = self._twos_comp_to_decimal(b)
+    def _mult(self):
+        try:
+            print("MULTIPLIKATION")
+            a = input("A: ")
+            b = input("B: ")
 
-                result_dec = dec_a * dec_b
+            dec_a = self._bin_to_dec(a)
+            dec_b = self._bin_to_dec(b)
 
-                # Zurück zu 2er-Komplement (doppelte Bitanzahl für Produkt)
-                bits = len(a) + len(b)
-                result_bin = self._decimal_to_twos_comp(result_dec, bits)
+            result_dec = dec_a * dec_b
+            bits = len(a) + len(b)
+            result_bin = self._dec_to_2er(result_dec, bits)
 
-                print("Produkt: {}".format(result_bin))
-                print("Dezimal: {}".format(result_dec))
-                print("Bit-Länge: {}".format(bits))
+            print("= " + result_bin)
+            print("(" + str(result_dec) + ")")
 
-                show_details = input("Schritte zeigen? (d/Enter): ").strip().lower()
-                if show_details == 'd':
-                    print("A = {} = {}".format(a, dec_a))
-                    print("B = {} = {}".format(b, dec_b))
-                    print("A x B = {} x {} = {}".format(dec_a, dec_b, result_dec))
+            if input("Details? y/n: ") == 'y':
+                print(str(dec_a) + " x " + str(dec_b))
+                print("= " + str(result_dec))
+                orig_bits = max(len(a), len(b))
+                if len(result_bin) > orig_bits:
+                    trunc = result_bin[-orig_bits:]
+                    print("Kurz: " + trunc)
+                input("OK?")
 
-                    # Zeige auch das ursprüngliche Bit-Format
-                    orig_bits = max(len(a), len(b))
-                    truncated = result_bin[-orig_bits:] if len(result_bin) > orig_bits else result_bin
-                    print("Gekürzt auf {} Bit: {}".format(orig_bits, truncated))
+        except:
+            print("Fehler!")
+            input("OK?")
 
-        except ValueError:
-            print("Fehler: Ungültige Eingabe!")
-
-        input("Enter zum Fortfahren...")
-
-    def _twos_comp_to_decimal(self, binary):
+    def _bin_to_dec(self, binary):
+        """2er-Komplement zu Dezimal"""
         if binary[0] == '1':
-            inverted = ''.join('1' if b == '0' else '0' for b in binary)
-            return -(int(inverted, 2) + 1)
+            inv = ''
+            for b in binary:
+                if b == '0':
+                    inv += '1'
+                else:
+                    inv += '0'
+            return -(int(inv, 2) + 1)
         else:
             return int(binary, 2)
 
-    def _decimal_to_twos_comp(self, decimal, bits):
+    def _dec_to_2er(self, decimal, bits):
+        """Dezimal zu 2er-Komplement"""
         if decimal >= 0:
-            return format(decimal, '0{}b'.format(bits))
+            return self._to_bin(decimal, bits)
         else:
             max_val = 2 ** bits
-            twos_comp = max_val + decimal  # decimal ist negativ
-            return format(twos_comp, '0{}b'.format(bits))
+            tc = max_val + decimal
+            return self._to_bin(tc, bits)
+
+    def _to_bin(self, num, bits):
+        """Dezimal zu Binär mit Nullen"""
+        if num == 0:
+            binary = "0"
+        else:
+            binary = ""
+            temp = num
+            while temp > 0:
+                binary = str(temp % 2) + binary
+                temp = temp // 2
+
+        while len(binary) < bits:
+            binary = "0" + binary
+
+        return binary

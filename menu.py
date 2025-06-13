@@ -5,8 +5,7 @@ import tools_channel_coding
 import tools_convolutional_code
 import channel_model
 import tools_binary_conversion
-
-
+import tools_probability
 
 TOOLS = [
     tool_base.ToolGroup(1, "Entropie und Kompression", [
@@ -23,15 +22,17 @@ TOOLS = [
     ]),
 
     tool_base.ToolGroup(3, "Kanalcodierung", [
-        tool_base.ToolEntry(1, "Blockcode: Analyse",tools_channel_coding.ComprehensiveCodeAnalysisTool),
-        tool_base.ToolEntry(2, "Blockcode: Eigenschaften",tools_channel_coding.CodePropertiesAnalysisTool),
+        tool_base.ToolEntry(1, "Blockcode: Analyse", tools_channel_coding.ComprehensiveCodeAnalysisTool),
+        tool_base.ToolEntry(2, "Blockcode: Eigenschaften", tools_channel_coding.CodePropertiesAnalysisTool),
         tool_base.ToolEntry(3, "Prüfmatrix H:", tools_channel_coding.ParityMatrixTool),
-        tool_base.ToolEntry(4, "Zyklischer Code: g(x) zu Matrix",tools_channel_coding.CyclicCodeAnalysisTool),
-        tool_base.ToolEntry(5, "CRC: Prüfbits mit g(x) berechnen & Codewort erstellen",tools_channel_coding.CRCCalculationTool),
+        tool_base.ToolEntry(4, "Zyklischer Code: g(x) zu Matrix", tools_channel_coding.CyclicCodeAnalysisTool),
+        tool_base.ToolEntry(5, "CRC: Prüfbits mit g(x) berechnen & Codewort erstellen",
+                            tools_channel_coding.CRCCalculationTool),
         tool_base.ToolEntry(6, "CRC: Empfangenes Wort mit g(x) prüfen", tools_channel_coding.CRCCheckTool),
         tool_base.ToolEntry(7, "Polynomdivision", tools_channel_coding.PolynomialDivisionTool),
         tool_base.ToolEntry(8, "Hamming-Distanz berechnen", tools_channel_coding.HammingDistanceTool),
-        tool_base.ToolEntry(9, "Code-Parameter & Dichtgepacktheit",tools_channel_coding.CodeParametersAndBoundsTool),  # Neuer/Angepasster Eintrag
+        tool_base.ToolEntry(9, "Code-Parameter & Dichtgepacktheit", tools_channel_coding.CodeParametersAndBoundsTool),
+        # Neuer/Angepasster Eintrag
 
     ]),
 
@@ -60,7 +61,19 @@ TOOLS = [
         tool_base.ToolEntry(7, "Exzess", tools_binary_conversion.ExcessConverter),
         tool_base.ToolEntry(8, "Oktal", tools_binary_conversion.OctalConverter),
     ]),
+    tool_base.ToolGroup(7, "Wahrscheinlichkeitsrechnung", [
+        tool_base.ToolEntry(1, "basic Tools", tools_probability.BasicProbability),
+        tool_base.ToolEntry(2, "Urnen Rechner", tools_probability.UrnCalculator),
+        tool_base.ToolEntry(3, "Würfel", tools_probability.DiceCalculator),
+        tool_base.ToolEntry(4, "Binomial Rechner", tools_probability.BinomialCalculator),
+        tool_base.ToolEntry(5, "Bitfehler", tools_probability.BitErrorCalculator),
+        tool_base.ToolEntry(6, "Kombinatorik", tools_probability.Combinatorics),
+        tool_base.ToolEntry(7, "Lotto", tools_probability.LottoCalculator),
+    ]),
+
 ]
+
+
 def find_tool_by_path(path: list, tools: list):
     current_tools = tools
     current = None

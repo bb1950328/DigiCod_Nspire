@@ -6,6 +6,7 @@
 4 Faltungscode
 5 Kanalmodell
 6 Umrechnungen
+7 Wahrscheinlichkeitsrechnung
 Nr: 1
 
 # 1 Entropie und Kompression
@@ -24,4 +25,5 @@ Nr:
 4 Faltungscode
 5 Kanalmodell
 6 Umrechnungen
+7 Wahrscheinlichkeitsrechnung
 Nr: 

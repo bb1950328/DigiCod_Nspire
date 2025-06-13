@@ -6,6 +6,7 @@
 4 Faltungscode
 5 Kanalmodell
 6 Umrechnungen
+7 Wahrscheinlichkeitsrechnung
 Nr: 1.1
 
 ==== Entropie berechnen ====
@@ -28,4 +29,5 @@ Drücke Enter, um fortzufahren...
 4 Faltungscode
 5 Kanalmodell
 6 Umrechnungen
+7 Wahrscheinlichkeitsrechnung
 Nr: 

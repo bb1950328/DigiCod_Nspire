@@ -1853,7 +1853,7 @@ class CodePropertiesAnalysisTool(BaseChannelCodingTool):
         input("\nDrücke Enter zum Fortfahren...")
 
 
-class CodeParametersAndBoundsTool(BaseChannelCodingTool):
+class CodeParametersAndBoundsTool:
     """
     Kompakte Version für Taschenrechner mit MicroPython 3.4
     Berechnet Code-Parameter und prüft Dichtgepacktheit
@@ -1922,92 +1922,132 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
 
     def show_summary(self, params):
         """Zeigt kompakte Zusammenfassung."""
-        print("\n=== ERGEBNIS-ZUSAMMENFASSUNG ===")
-        print("n={}, Gueltige CW: {}, e*={}, e={}".format(
-            params['n'], params['valid_cw'], params['e_star'], params['e_corr']))
+        print("")
+        print("=== ERGEBNIS ===")
+        print("n=" + str(params['n']) + ", Gueltige CW: " + str(params['valid_cw']))
+        print("e*=" + str(params['e_star']) + ", e=" + str(params['e_corr']))
 
         if params['is_perfect']:
-            print("Status: DICHTGEPACKT (perfekt)")
+            print("Status: DICHTGEPACKT")
         else:
             print("Status: NICHT dichtgepackt")
 
-        print("\nOptionen:")
-        print("1 - Details anzeigen")
-        print("2 - Dichtgepacktheits-Berechnung")
-        print("3 - Alle Kombinationen")
-        print("q - Zurueck zum Menu")
+        print("")
+        print("1 - Details")
+        print("2 - Dichtgepacktheit")
+        print("3 - Kombinationen")
+        print("q - Zurueck")
 
     def show_details(self, params):
         """Zeigt detaillierte Parameter."""
-        print("\n=== PARAMETER-DETAILS ===")
-        print("Codelaenge n: {}".format(params['n']))
-        print("Gueltige Codewoerter: {}".format(params['valid_cw']))
-        print("Moegliche Codewoerter: {}".format(params['possible_cw']))
-        print("Erkennbare Fehler e*: {}".format(params['e_star']))
-        print("Korrigierbare Fehler e: {}".format(params['e_corr']))
-        input("\nEnter fuer weiter...")
+        print("")
+        print("=== DETAILS ===")
+        print("Codelaenge n: " + str(params['n']))
+        print("Gueltige CW: " + str(params['valid_cw']))
+        print("Moegliche CW: " + str(params['possible_cw']))
+        print("Erkennbare e*: " + str(params['e_star']))
+        print("Korrigierbare e: " + str(params['e_corr']))
+        input("Enter...")
 
     def show_perfectness_calc(self, params):
         """Zeigt Dichtgepacktheits-Berechnung."""
-        print("\n=== DICHTGEPACKTHEITS-PRUEFUNG ===")
-        print("Summe Kombinationen S: {}".format(params['sum_comb']))
-        print("Sollwert 2^(n-k): {}".format(params['val_perfect']))
-        print("Bedingung S = 2^(n-k): {}".format(
-            "ERFUELLT" if params['is_perfect'] else "NICHT erfuellt"))
+        print("")
+        print("=== DICHTGEPACKTHEIT ===")
+        print("Summe S: " + str(params['sum_comb']))
+        print("Sollwert 2^(n-k): " + str(params['val_perfect']))
 
-        if not params['is_perfect']:
+        if params['is_perfect']:
+            print("S = 2^(n-k): ERFUELLT")
+        else:
+            print("S = 2^(n-k): NICHT erfuellt")
             if params['sum_comb'] > params['val_perfect']:
-                print("FEHLER: S > 2^(n-k) - Code ungueltig!")
+                print("FEHLER: S > 2^(n-k)")
             else:
                 print("Code gueltig aber nicht optimal")
 
-        input("\nEnter fuer weiter...")
+        input("Enter...")
 
     def show_combinations(self, params):
         """Zeigt alle Kombinationen."""
-        print("\n=== KOMBINATIONEN C(n,i) ===")
+        print("")
+        print("=== KOMBINATIONEN ===")
         for i, comb in params['comb_details']:
-            print("C({},{}) = {}".format(params['n'], i, comb))
-        print("Summe: {}".format(params['sum_comb']))
-        input("\nEnter fuer weiter...")
+            print("C(" + str(params['n']) + "," + str(i) + ") = " + str(comb))
+        print("Summe: " + str(params['sum_comb']))
+        input("Enter...")
 
     def get_user_input(self):
         """Holt Benutzereingaben mit Exit-Option."""
         try:
-            print("\n=== CODE-PARAMETER RECHNER ===")
-            print("(Eingabe 'q' zum Beenden)")
+            print("")
+            print("=== CODE-PARAMETER ===")
+            print("(q zum Beenden)")
 
             k_str = input("Nachrichtenstellen k: ")
-            if k_str.lower() == 'q':
+            # Robuste String-Behandlung für MicroPython 3.4
+            if len(k_str) > 0 and (k_str[0] == 'q' or k_str[0] == 'Q'):
                 return None
             k_info = int(k_str)
 
             r_str = input("Kontrollstellen r: ")
-            if r_str.lower() == 'q':
+            if len(r_str) > 0 and (r_str[0] == 'q' or r_str[0] == 'Q'):
                 return None
             k_control = int(r_str)
 
             h_str = input("Hamming-Distanz h: ")
-            if h_str.lower() == 'q':
+            if len(h_str) > 0 and (h_str[0] == 'q' or h_str[0] == 'Q'):
                 return None
             h_dist = int(h_str)
 
             # Validierung
             if k_info < 1 or k_control < 1 or h_dist < 1:
-                print("Fehler: Alle Werte muessen >= 1 sein")
+                print("Fehler: Alle Werte >= 1")
                 return None
 
             if h_dist > (k_info + k_control):
-                print("Fehler: h zu gross fuer Codelaenge")
+                print("Fehler: h zu gross")
                 return None
 
             return (k_info, k_control, h_dist)
 
-        except ValueError:
-            print("Fehler: Nur ganze Zahlen eingeben")
+        except:
+            print("Fehler: Nur Zahlen eingeben")
             return None
-        except KeyboardInterrupt:
-            return None
+
+    def process_menu_choice(self, choice_str, params):
+        """Verarbeitet Menü-Auswahl - robuste Version für MicroPython."""
+        # Debug: zeige was eingegeben wurde
+        print("Eingabe: '" + choice_str + "' (Laenge: " + str(len(choice_str)) + ")")
+
+        # Entferne Leer- und Steuerzeichen manuell
+        cleaned = ""
+        for char in choice_str:
+            if char != ' ' and char != '\t' and char != '\r' and char != '\n':
+                cleaned += char
+
+        # Mache zu lowercase manuell
+        if len(cleaned) == 1:
+            if cleaned == 'Q':
+                cleaned = 'q'
+
+        print("Bereinigt: '" + cleaned + "'")
+
+        if cleaned == 'q':
+            return 'quit'
+        elif cleaned == '1':
+            self.show_details(params)
+            return 'continue'
+        elif cleaned == '2':
+            self.show_perfectness_calc(params)
+            return 'continue'
+        elif cleaned == '3':
+            self.show_combinations(params)
+            return 'continue'
+        else:
+            print("Ungueltige Eingabe!")
+            print("Nutze: 1, 2, 3 oder q")
+            input("Enter...")
+            return 'continue'
 
     def run(self):
         """Hauptschleife mit Menüführung."""
@@ -2024,7 +2064,7 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
             try:
                 params = self.calculate_parameters(k_info, k_control, h_dist)
             except Exception as e:
-                print("Berechnungsfehler: {}".format(e))
+                print("Berechnungsfehler!")
                 continue
 
             # Menü-Schleife
@@ -2032,27 +2072,16 @@ class CodeParametersAndBoundsTool(BaseChannelCodingTool):
                 self.show_summary(params)
 
                 try:
-                    choice = input("\nWahl: ").strip().lower()
+                    choice = input("Wahl: ")
+                    result = self.process_menu_choice(choice, params)
 
-                    if choice == 'q':
+                    if result == 'quit':
                         break
-                    elif choice == '1':
-                        self.show_details(params)
-                    elif choice == '2':
-                        self.show_perfectness_calc(params)
-                    elif choice == '3':
-                        self.show_combinations(params)
-                    else:
-                        print("Ungueltige Eingabe! (1, 2, 3 oder q)")
-                        input("Enter fuer weiter...")
+                    # bei 'continue' weitermachen
 
-                except KeyboardInterrupt:
+                except:
+                    print("Eingabefehler!")
                     break
 
-            # Neue Berechnung?
-            try:
-                    print("Programm beendet.")
-                    break
-            except KeyboardInterrupt:
-                print("\nProgramm beendet.")
-                break
+            print("Programm beendet.")
+            break

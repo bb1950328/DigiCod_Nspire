@@ -373,7 +373,9 @@ class FloatConverter(Tool):
 
     def _float_to_ieee754(self, f):
         """
-        Manuelle IEEE-754 Konvertierung, die auch in MicroPython funktioniert.
+        Manuelle IEEE-754 Konvertierung, die für sehr alte/minimale
+        MicroPython-Versionen (z.B. 3.4) kompatibel ist.
+        Verwendet weder struct noch format(..., 'b').
         Behandelt keine Sonderfälle wie Inf, NaN oder denormalisierte Zahlen.
         """
         if f == 0.0:
@@ -388,7 +390,6 @@ class FloatConverter(Tool):
 
         # 2. Exponent und Normalisierung
         exponent = 0
-        # Normalisieren, sodass f im Bereich [1.0, 2.0) liegt
         while f >= 2.0:
             f /= 2.0
             exponent += 1
@@ -396,19 +397,23 @@ class FloatConverter(Tool):
             f *= 2.0
             exponent -= 1
 
-        # Bias für 32-bit float ist 127
         biased_exponent = exponent + 127
 
-        # In 8-Bit Binärstring umwandeln
-        exponent_bits = format(biased_exponent, '08b')
+        # Manuelle Umwandlung des Exponenten in einen 8-Bit Binärstring
+        # Ersetzt die nicht verfügbare Zeile: exponent_bits = format(biased_exponent, '08b')
+        exponent_bits = ''
+        temp_exp = biased_exponent
+        for _ in range(8):
+            if temp_exp % 2 == 1:
+                exponent_bits = '1' + exponent_bits
+            else:
+                exponent_bits = '0' + exponent_bits
+            temp_exp //= 2  # Integer-Division, entspricht einem Rechts-Shift
 
         # 3. Mantisse
-        # Nach der Normalisierung ist f = 1.mantisse
-        # Wir brauchen nur den Nachkomma-Teil
         f -= 1.0
         mantissa_bits = []
 
-        # 23 Bits für die Mantisse generieren
         for _ in range(23):
             f *= 2
             if f >= 1.0:

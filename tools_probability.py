@@ -291,10 +291,10 @@ class BinomialCalculator(Tool):
     def run(self):
         while True:
             print("=== BINOMIAL ===")
-            print("1) P(X = k)")
-            print("2) P(X ≤ k)")
-            print("3) P(X ≥ k)")
-            print("4) E(X) & Var(X)")
+            print("1) P(X = k)  # Exakt k Erfolge")
+            print("2) P(X ≤ k)  # Höchstens k Erfolge")
+            print("3) P(X ≥ k) # Mindestens k Erfolge")
+            print("4) E(X) & Var(X) # Erwartung & Varianz")
             print("q) Zurück")
 
             choice = input("Wahl: ").strip().lower()

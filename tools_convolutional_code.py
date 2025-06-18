@@ -2,13 +2,18 @@ from tool_base import *
 
 
 class ConvolutionalEncodeTool(Tool):
-    def get_convolution_output(self, input_bits, generator_polynomials):
-        """Berechnet die Ausgabe eines Faltungscodierers für eine gegebene Eingabe"""
+    def get_convolution_output(self, input_bits, generator_polynomials, add_tail_bits=True, output_order="g1_first"):
+        """
+        Berechnet die Ausgabe eines Faltungscodierers
+
+        add_tail_bits: Füge Nullen hinzu um Register zu leeren
+        output_order: "g1_first" oder "g2_first" für Ausgabe-Reihenfolge
+        """
         # Konvertiere String-Eingabe in Liste von Integers
         if isinstance(input_bits, str):
             input_bits = [int(bit) for bit in input_bits]
 
-        # Konvertiere Generator-Polynome zu Listen von Integers, falls nötig
+        # Konvertiere Generator-Polynome zu Listen von Integers
         g_polys = []
         for poly in generator_polynomials:
             if isinstance(poly, str):
@@ -16,71 +21,145 @@ class ConvolutionalEncodeTool(Tool):
             else:
                 g_polys.append(poly)
 
-        output = []
-        # Bestimme die maximale Länge der Generatorpolynome für das Schieberegister
+        # Bestimme das Gedächtnis (maximale Länge - 1)
         max_len = max(len(p) for p in g_polys)
-        state = [0] * (max_len - 1)  # Schieberegister
+        memory = max_len - 1
 
-        for bit in input_bits:
-            # Aktualisiere Schieberegister
-            state = [bit] + state[:-1]
+        # Füge Tail-Bits hinzu wenn gewünscht
+        if add_tail_bits:
+            input_sequence = input_bits + [0] * memory
+            print("Tail-Bits hinzugefuegt: " + str([0] * memory))
+        else:
+            input_sequence = input_bits
+
+        # Schieberegister: [s0, s1, s2, ...] wobei s0 das neueste Bit ist
+        shift_register = [0] * max_len
+
+        output = []
+
+        print("Debug: Schritt-fuer-Schritt Berechnung")
+        print("Generatorpolynome: " + str(g_polys))
+        print("Gedaechtnis m = " + str(memory))
+        print("")
+
+        for step, input_bit in enumerate(input_sequence):
+            # Schiebe alle Bits nach rechts und füge neues Bit links ein
+            shift_register = [input_bit] + shift_register[:-1]
+
+            print("Schritt " + str(step + 1) + ": Eingabe=" + str(input_bit))
+            print("Schieberegister: " + str(shift_register))
 
             # Berechne Ausgabe für jedes Generatorpolynom
-            for poly in g_polys:
-                # XOR der relevanten Bits (Faltung)
-                out_bit = 0
-                for i in range(min(len(poly), len(state) + 1)):
-                    if i == 0:
-                        out_bit ^= bit * poly[i]  # Aktuelles Bit
-                    else:
-                        if i - 1 < len(state):
-                            out_bit ^= state[i - 1] * poly[i]
-                output.append(out_bit)
+            step_output = []
+            for poly_idx, poly in enumerate(g_polys):
+                # XOR aller relevanten Bits
+                output_bit = 0
+                calculation_parts = []
+
+                for i in range(len(poly)):
+                    if poly[i] == 1:  # Nur wenn Polynom-Bit gesetzt ist
+                        if i < len(shift_register):
+                            output_bit ^= shift_register[i]
+                            calculation_parts.append("s" + str(i) + "(" + str(shift_register[i]) + ")")
+
+                step_output.append(output_bit)
+                print("g" + str(poly_idx + 1) + " " + str(poly) + ": " +
+                      " XOR ".join(calculation_parts) + " = " + str(output_bit))
+
+            # Ausgabe-Reihenfolge bestimmen
+            if output_order == "g2_first" and len(step_output) >= 2:
+                step_output = [step_output[1], step_output[0]] + step_output[2:]
+
+            output.extend(step_output)
+            print("Ausgabe: " + str(step_output))
+            print("")
 
         return output
 
-    def run(self) -> None:
+    def test_known_example(self):
+        """Testet mit einem bekannten Beispiel aus der Literatur"""
+        print("=== BEKANNTES BEISPIEL ===")
+        print("g1 = [1,1,1], g2 = [1,0,1]")
+        print("Eingabe: [1,0,1]")
+
+        result = self.get_convolution_output([1, 0, 1], [[1, 1, 1], [1, 0, 1]], add_tail_bits=True)
+        print("Ergebnis: " + str(result))
+        print("")
+
+    def run(self):
+        """Hauptfunktion für die Faltungscodierung"""
         print("==== Codierung mit Faltungscode ====")
         try:
             input_bits = input("Eingabe-Bits: ")
             if not all(bit in '01' for bit in input_bits):
-                print("Fehler: Die Eingabe muss binär sein (nur 0 und 1 enthalten)")
-                print("\nDrücke Enter, um fortzufahren...")
-                input()
+                print("Fehler: Die Eingabe muss binaer sein (nur 0 und 1)")
+                input("Enter...")
                 return
 
             n_polys = int(input("Anzahl der Generatorpolynome: "))
             if n_polys <= 0:
-                print("Fehler: Die Anzahl der Polynome muss positiv sein")
-                print("\nDrücke Enter, um fortzufahren...")
-                input()
+                print("Fehler: Anzahl muss positiv sein")
+                input("Enter...")
                 return
 
             generator_polynomials = []
             for i in range(n_polys):
-                poly = input("Generatorpolynom {} (Bitfolge): ".format(i + 1))
+                poly = input("Generatorpolynom " + str(i + 1) + " (Bitfolge): ")
                 if not all(bit in '01' for bit in poly):
-                    print("Fehler: Das Generatorpolynom {} muss binär sein".format(i + 1))
-                    print("\nDrücke Enter, um fortzufahren...")
-                    input()
+                    print("Fehler: Generatorpolynom muss binaer sein")
+                    input("Enter...")
                     return
                 generator_polynomials.append(poly)
 
-            output = self.get_convolution_output(input_bits, generator_polynomials)
+            # Optionen abfragen
+            print("")
+            tail_choice = input("Tail-Bits hinzufuegen? (j/n): ")
+            add_tail = tail_choice.lower() == 'j' or tail_choice.lower() == 'y'
+
+            order_choice = input("Ausgabe-Reihenfolge (1=g1 zuerst, 2=g2 zuerst): ")
+            output_order = "g2_first" if order_choice == "2" else "g1_first"
+
+            print("")
+            output = self.get_convolution_output(input_bits, generator_polynomials,
+                                                 add_tail_bits=add_tail,
+                                                 output_order=output_order)
+
+            # Erstelle die finale Ausgabe
             output_str = ''.join(str(bit) for bit in output)
-            print("\nKodierte Ausgabe: {}".format(output_str))
+            print("=== ERGEBNIS ===")
+            print("Kodierte Ausgabe: " + output_str)
 
             # Gruppiere die Ausgabe je nach Anzahl der Polynome
             grouped = []
             for i in range(0, len(output), n_polys):
-                grouped.append(output_str[i:i + n_polys])
+                group = output_str[i:i + n_polys]
+                grouped.append(group)
 
-            print("Gruppiert:", ' '.join(grouped))
+            print("Gruppiert: " + ' '.join(grouped))
+
+            # Alternative Darstellung
+            if n_polys == 2:
+                print("")
+                print("Alternative Gruppierung:")
+                g1_bits = []
+                g2_bits = []
+                for i in range(0, len(output), 2):
+                    if output_order == "g1_first":
+                        g1_bits.append(str(output[i]))
+                        if i + 1 < len(output):
+                            g2_bits.append(str(output[i + 1]))
+                    else:
+                        g2_bits.append(str(output[i]))
+                        if i + 1 < len(output):
+                            g1_bits.append(str(output[i + 1]))
+
+                print("g1: " + ''.join(g1_bits))
+                print("g2: " + ''.join(g2_bits))
+
         except Exception as e:
-            print("Fehler: {}".format(str(e)))
+            print("Fehler: " + str(e))
 
-        print("\nDrücke Enter, um fortzufahren...")
-        input()
+        input("Enter...")
 
 
 class ViterbiDecodeTool(Tool):

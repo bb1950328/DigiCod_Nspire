@@ -372,23 +372,55 @@ class FloatConverter(Tool):
         input("Enter zum Fortfahren...")
 
     def _float_to_ieee754(self, f):
-        """Vereinfachte IEEE-754 Konvertierung"""
-        if f == 0:
+        """
+        Manuelle IEEE-754 Konvertierung, die auch in MicroPython funktioniert.
+        Behandelt keine Sonderfälle wie Inf, NaN oder denormalisierte Zahlen.
+        """
+        if f == 0.0:
             return '0' * 32
 
-        sign = '1' if f < 0 else '0'
-        f = abs(f)
+        # 1. Vorzeichen
+        if f < 0:
+            sign_bit = '1'
+            f = -f
+        else:
+            sign_bit = '0'
 
-        # Sehr vereinfachte Implementierung
-        # Für Prüfungszwecke ausreichend
-        try:
-            # Nutze eingebaute float-zu-bits Konvertierung wo möglich
-            import struct
-            bits = struct.unpack('>I', struct.pack('>f', f if sign == '0' else -f))[0]
-            return format(bits, '032b')
-        except:
-            # Fallback für MicroPython
-            return '0' * 32  # Platzhalter
+        # 2. Exponent und Normalisierung
+        exponent = 0
+        # Normalisieren, sodass f im Bereich [1.0, 2.0) liegt
+        while f >= 2.0:
+            f /= 2.0
+            exponent += 1
+        while f < 1.0:
+            f *= 2.0
+            exponent -= 1
+
+        # Bias für 32-bit float ist 127
+        biased_exponent = exponent + 127
+
+        # In 8-Bit Binärstring umwandeln
+        exponent_bits = format(biased_exponent, '08b')
+
+        # 3. Mantisse
+        # Nach der Normalisierung ist f = 1.mantisse
+        # Wir brauchen nur den Nachkomma-Teil
+        f -= 1.0
+        mantissa_bits = []
+
+        # 23 Bits für die Mantisse generieren
+        for _ in range(23):
+            f *= 2
+            if f >= 1.0:
+                mantissa_bits.append('1')
+                f -= 1.0
+            else:
+                mantissa_bits.append('0')
+
+        mantissa_str = "".join(mantissa_bits)
+
+        # 4. Zusammensetzen
+        return sign_bit + exponent_bits + mantissa_str
 
     def _ieee754_to_float(self, ieee):
         """Vereinfachte IEEE-754 Dekodierung"""

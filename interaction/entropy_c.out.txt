@@ -23,4 +23,5 @@ Drücke Enter, um fortzufahren...
 4 Faltungscode
 5 Kanalmodell
 6 Umrechnungen
+7 Wahrscheinlichkeitsrechnung
 Nr: 

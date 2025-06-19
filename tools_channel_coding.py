@@ -1853,7 +1853,7 @@ class CodePropertiesAnalysisTool(BaseChannelCodingTool):
         input("\nDrücke Enter zum Fortfahren...")
 
 
-class CodeParametersAndBoundsTool:
+class CodeParametersAndBoundsTool(BaseChannelCodingTool):
     """
     Kompakte Version für Taschenrechner mit MicroPython 3.4
     Berechnet Code-Parameter und prüft Dichtgepacktheit

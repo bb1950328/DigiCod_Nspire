@@ -835,10 +835,30 @@ class CRCCheckTool(BaseChannelCodingTool):
 class PolynomialDivisionTool(BaseChannelCodingTool):
     """Tool für Polynomdivision in GF(2)"""
 
+    def binary_to_vector(self, binary_str):
+        """Konvertiert Binär-String zu Liste"""
+        return [int(bit) for bit in binary_str]
+
+    def vector_to_binary(self, vector):
+        """Konvertiert Liste zu Binär-String"""
+        return ''.join(str(bit) for bit in vector)
+
+    def validate_binary_string(self, binary_str, name, min_length=1):
+        """Validiert Binär-String"""
+        errors = []
+        if not binary_str:
+            errors.append(name + " leer")
+        elif not all(c in '01' for c in binary_str):
+            errors.append(name + " nur 0,1")
+        elif len(binary_str) < min_length:
+            errors.append(name + " zu kurz")
+        return errors
+
     def polynomial_division_gf2(self, dividend, divisor, validate=True):
         """Polynomdivision in GF(2)"""
-        print("\n==== POLYNOMDIVISION IN GF(2) ====")
+        print("=== POLY DIV GF(2) ===")
 
+        # Input-Konvertierung
         if isinstance(dividend, str):
             dividend_str = dividend.replace(" ", "").replace("'", "")
             dividend = self.binary_to_vector(dividend_str)
@@ -851,102 +871,195 @@ class PolynomialDivisionTool(BaseChannelCodingTool):
         else:
             divisor_str = self.vector_to_binary(divisor)
 
-        print("Dividend:  " + dividend_str)
-        print("Divisor:   " + divisor_str)
+        print("D: " + dividend_str)
+        print("G: " + divisor_str)
 
-        while len(dividend) > 1 and dividend[0] == 0:
-            dividend = dividend[1:]
-        while len(divisor) > 1 and divisor[0] == 0:
-            divisor = divisor[1:]
+        # Kopien erstellen für Bearbeitung
+        dividend_work = dividend[:]
+        divisor_work = divisor[:]
 
-        if len(dividend) < len(divisor):
-            print("\nSpezialfall: Dividend-Grad < Divisor-Grad")
-            print("Quotient: 0")
-            print("Rest:     " + self.vector_to_binary(dividend))
-            return [0], dividend
+        # Führende Nullen entfernen
+        while len(dividend_work) > 1 and dividend_work[0] == 0:
+            dividend_work = dividend_work[1:]
+        while len(divisor_work) > 1 and divisor_work[0] == 0:
+            divisor_work = divisor_work[1:]
 
-        quotient = []
-        remainder = dividend[:]
+        # Spezialfall: Dividend kleiner als Divisor
+        if len(dividend_work) < len(divisor_work):
+            print("Fall: D < G")
+            print("Q: 0")
+            print("R: " + self.vector_to_binary(dividend_work))
+            return [0], dividend_work
 
-        print("\nDivisions-Schritte:")
+        # Quotient initialisieren mit der richtigen Länge
+        quotient_length = len(dividend_work) - len(divisor_work) + 1
+        quotient = [0] * quotient_length
+        remainder = dividend_work[:]
+
+        print("--- Schritte ---")
         step = 1
 
-        while len(remainder) >= len(divisor):
-            has_ones = False
-            for bit in remainder:
-                if bit == 1:
-                    has_ones = True
-                    break
-            if not has_ones:
-                break
-
+        # Hauptschleife der Division
+        while len(remainder) >= len(divisor_work) and any(bit == 1 for bit in remainder):
+            # Führende Nullen entfernen
             while len(remainder) > 1 and remainder[0] == 0:
                 remainder = remainder[1:]
 
-            if len(remainder) < len(divisor):
+            # Prüfen ob noch Division möglich
+            if len(remainder) < len(divisor_work):
                 break
 
-            quotient.append(1)
+            # Prüfen ob höchster Bit gesetzt ist
+            if remainder[0] == 1:
+                # Berechne Position basierend auf aktuellem Grad
+                current_degree = len(remainder) - 1
+                divisor_degree = len(divisor_work) - 1
+                quotient_degree = current_degree - divisor_degree
+                # Array-Index: höchster Grad am Anfang
+                quotient_pos = (quotient_length - 1) - quotient_degree
 
-            print("Schritt " + str(step) + ":")
-            print("  " + self.vector_to_binary(remainder))
+                # Setze 1 an der berechneten Position
+                if quotient_pos >= 0 and quotient_pos < len(quotient):
+                    quotient[quotient_pos] = 1
 
-            for i in range(len(divisor)):
-                if i < len(remainder):
-                    remainder[i] = (remainder[i] + divisor[i]) % 2
+                # Kompakte Ausgabe für Taschenrechner
+                print(str(step) + ": " + self.vector_to_binary(remainder))
 
-            print("  " + self.vector_to_binary(divisor))
-            print("  " + "-" * len(dividend_str))
-            print("  " + self.vector_to_binary(remainder))
-            print()
+                # Erstelle verschobenen Divisor
+                divisor_shifted = divisor_work[:]
+                # Füge Nullen rechts hinzu um gleiche Länge zu haben
+                while len(divisor_shifted) < len(remainder):
+                    divisor_shifted.append(0)
 
-            if remainder and remainder[0] == 0:
-                remainder = remainder[1:]
+                print("   " + self.vector_to_binary(divisor_shifted))
 
-            step += 1
+                # XOR Operation (Polynom-Subtraktion in GF(2))
+                for j in range(len(remainder)):
+                    remainder[j] = (remainder[j] + divisor_shifted[j]) % 2
 
-        if not quotient:
-            quotient = [0]
-        if not remainder:
+                print("   " + self.vector_to_binary(remainder))
+                step = step + 1
+
+            else:
+                # Wenn höchster Bit 0 ist, verschiebe einfach
+                remainder = remainder[1:] if len(remainder) > 1 else [0]
+
+        # Quotient-Nullen entfernen
+        while len(quotient) > 1 and quotient[0] == 0:
+            quotient = quotient[1:]
+
+        # Rest aufräumen
+        while len(remainder) > 1 and remainder[0] == 0:
+            remainder = remainder[1:]
+        if not remainder or all(x == 0 for x in remainder):
             remainder = [0]
 
         quotient_str = self.vector_to_binary(quotient)
         remainder_str = self.vector_to_binary(remainder)
 
-        print("Ergebnis:")
-        print("  Quotient: " + quotient_str)
-        print("  Rest:     " + remainder_str)
+        print("--- Ergebnis ---")
+        print("Q: " + quotient_str)
+        print("R: " + remainder_str)
 
         return quotient, remainder
 
     def run(self):
         """Führt die Polynomdivision durch"""
         try:
-            print("\n=== POLYNOMDIVISION IN GF(2) ===")
+            print("=== POLY DIV ===")
 
+            # Dividend eingeben mit Validierung
             while True:
                 dividend = input("Dividend: ").strip()
-                errors, _ = self.validate_binary_string(dividend, "Dividend")
+                errors = self.validate_binary_string(dividend, "Dividend")
                 if not errors:
                     break
                 for error in errors:
-                    print("❌ " + error)
+                    print("X " + error)
 
+            # Divisor eingeben mit Validierung
             while True:
                 divisor = input("Divisor: ").strip()
-                errors, _ = self.validate_binary_string(divisor, "Divisor", min_length=2)
+                errors = self.validate_binary_string(divisor, "Divisor", min_length=2)
                 if not errors:
                     break
                 for error in errors:
-                    print("❌ " + error)
+                    print("X " + error)
 
+            # Division durchführen
             quotient, remainder = self.polynomial_division_gf2(dividend, divisor, validate=True)
 
+            # Zusätzliche Informationen falls gewünscht
+            print("--- Info ---")
+            print("Q-Grad: " + str(len(quotient) - 1))
+            print("R-Grad: " + str(len(remainder) - 1) if remainder != [0] else "R-Grad: -")
+
         except Exception as e:
-            print("❌ Fehler: " + str(e))
+            print("X Fehler: " + str(e))
 
-        input("\nDrücke Enter zum Fortfahren...")
+        input("Enter...")
 
+    def quick_div(self, dividend, divisor):
+        """Schnelle Division ohne Eingabe"""
+        try:
+            quotient, remainder = self.polynomial_division_gf2(dividend, divisor, validate=False)
+            return quotient, remainder
+        except Exception as e:
+            print("X Fehler: " + str(e))
+            return None, None
+
+    def verify_division(self, dividend, divisor, quotient, remainder):
+        """Verifikation: D = Q*G + R"""
+        try:
+            # Konvertiere zu Listen falls nötig
+            if isinstance(dividend, str):
+                dividend = self.binary_to_vector(dividend)
+            if isinstance(divisor, str):
+                divisor = self.binary_to_vector(divisor)
+            if isinstance(quotient, str):
+                quotient = self.binary_to_vector(quotient)
+            if isinstance(remainder, str):
+                remainder = self.binary_to_vector(remainder)
+
+            # Berechne Q * G (Polynommultiplikation in GF(2))
+            if quotient == [0]:
+                product = [0]
+            else:
+                # Einfache Polynommultiplikation
+                product = [0] * (len(quotient) + len(divisor) - 1)
+                for i in range(len(quotient)):
+                    if quotient[i] == 1:
+                        for j in range(len(divisor)):
+                            product[i + j] = (product[i + j] + divisor[j]) % 2
+
+            # Addiere Rest (XOR in GF(2))
+            max_len = max(len(product), len(remainder))
+            result = [0] * max_len
+
+            for i in range(max_len):
+                prod_bit = product[i] if i < len(product) else 0
+                rem_bit = remainder[i] if i < len(remainder) else 0
+                result[i] = (prod_bit + rem_bit) % 2
+
+            # Entferne führende Nullen
+            while len(result) > 1 and result[0] == 0:
+                result = result[1:]
+            while len(dividend) > 1 and dividend[0] == 0:
+                dividend = dividend[1:]
+
+            # Vergleiche mit ursprünglichem Dividend
+            if result == dividend:
+                print("Verifikation: OK")
+                return True
+            else:
+                print("Verifikation: FEHLER")
+                print("Erwartet: " + self.vector_to_binary(dividend))
+                print("Erhalten: " + self.vector_to_binary(result))
+                return False
+
+        except Exception as e:
+            print("X Verifikation: " + str(e))
+            return False
 
 class CyclicCodeAnalysisTool(BaseChannelCodingTool):
     """Kompakte Tool für zyklische Code Analyse - optimiert für Taschenrechner"""

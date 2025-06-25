@@ -6,6 +6,7 @@ import tools_convolutional_code
 import channel_model
 import tools_binary_conversion
 import tools_probability
+import tools_theory
 
 TOOLS = [
     tool_base.ToolGroup(1, "Entropie und Kompression", [
@@ -69,6 +70,9 @@ TOOLS = [
         tool_base.ToolEntry(5, "Bitfehler", tools_probability.BitErrorCalculator),
         tool_base.ToolEntry(6, "Kombinatorik", tools_probability.Combinatorics),
         tool_base.ToolEntry(7, "Lotto", tools_probability.LottoCalculator),
+    ]),
+    tool_base.ToolGroup(8, "Theorie", [
+        tool_base.ToolEntry(1, "Theorie", tools_theory.InformationTheory),
     ]),
 
 ]

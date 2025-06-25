@@ -7,6 +7,7 @@
 5 Kanalmodell
 6 Umrechnungen
 7 Wahrscheinlichkeitsrechnung
+8 Theorie
 Nr: 1.1
 
 ==== Entropie berechnen ====
@@ -26,4 +27,5 @@ Drücke Enter, um fortzufahren...
 5 Kanalmodell
 6 Umrechnungen
 7 Wahrscheinlichkeitsrechnung
+8 Theorie
 Nr: 

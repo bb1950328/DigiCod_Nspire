@@ -214,7 +214,7 @@ class OctalConverter(Tool):
         input("Enter zum Fortfahren...")
 
 
-class FixedPointConverter(Tool):
+class FixedPointConverter:
     def run(self):
         while True:
             print("=== FIXKOMMA KONVERTER ===")
@@ -240,26 +240,43 @@ class FixedPointConverter(Tool):
                 total_bits = int(input("Gesamt-Bits (z.B. 16): "))
                 frac_bits = int(input("Nachkomma-Bits (z.B. 8): "))
 
-                scale = 2 ** frac_bits
+                # Skalierung berechnen (2^frac_bits)
+                scale = 1
+                for i in range(frac_bits):
+                    scale *= 2
                 fixed_int = int(decimal * scale)
-                binary = format(fixed_int & ((1 << total_bits) - 1), '0{}b'.format(total_bits))
 
-                print("Fixkomma: {}".format(binary))
-                print("Skalierung: 2^{}".format(frac_bits))
+                # Maske berechnen (2^total_bits - 1)
+                mask = 1
+                for i in range(total_bits):
+                    mask *= 2
+                mask -= 1
+                masked_value = fixed_int & mask
+                binary = bin(masked_value)[2:]  # Entfernt '0b'
+                # Null-Padding manuell
+                while len(binary) < total_bits:
+                    binary = '0' + binary
+
+                # Punkt zwischen Ganzzahl- und Nachkommateil einfügen
+                int_bits = total_bits - frac_bits
+                binary_with_dot = binary[:int_bits] + '.' + binary[int_bits:]
+
+                print("Fixkomma: %s" % binary_with_dot)
+                print("Skalierung: 2^%d" % frac_bits)
 
                 show_details = input("Details? (d/Enter): ").strip().lower()
                 if show_details == 'd':
                     # Rekonstruierte Zahl zeigen
                     reconstructed = self._fixed_to_decimal(binary, frac_bits)
-                    print("Rekonstruiert: {}".format(reconstructed))
-                    print("Differenz: {}".format(abs(decimal - reconstructed)))
+                    print("Rekonstruiert: %f" % reconstructed)
+                    print("Differenz: %f" % abs(decimal - reconstructed))
 
             elif choice == '2':  # Fixkomma zu Dezimal
                 binary = input("Fixkomma-Binär (z.B. 0101010000000000): ").strip()
                 frac_bits = int(input("Nachkomma-Bits (z.B. 8): "))
 
                 decimal = self._fixed_to_decimal(binary, frac_bits)
-                print("Dezimal: {}".format(decimal))
+                print("Dezimal: %f" % decimal)
 
             elif choice == '3':  # Rechnen
                 print("Addition/Subtraktion:")
@@ -280,8 +297,17 @@ class FixedPointConverter(Tool):
                     return
 
                 bits = max(len(a), len(b))
-                result_bin = format(result & ((1 << bits) - 1), '0{}b'.format(bits))
-                print("Ergebnis: {}".format(result_bin))
+                # Maske berechnen
+                mask = 1
+                for i in range(bits):
+                    mask *= 2
+                mask -= 1
+                result_masked = result & mask
+                result_bin = bin(result_masked)[2:]  # Entfernt '0b'
+                # Null-Padding manuell
+                while len(result_bin) < bits:
+                    result_bin = '0' + result_bin
+                print("Ergebnis: %s" % result_bin)
 
         except ValueError:
             print("Fehler: Ungültige Eingabe!")
@@ -297,7 +323,11 @@ class FixedPointConverter(Tool):
         else:
             fixed_int = int(binary, 2)
 
-        return fixed_int / (2 ** frac_bits)
+        scale = 1
+        for i in range(frac_bits):
+            scale *= 2
+
+        return float(fixed_int) / float(scale)
 
 
 class FloatConverter(Tool):

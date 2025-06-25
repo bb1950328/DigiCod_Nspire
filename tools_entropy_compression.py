@@ -114,94 +114,94 @@ class HuffmanTool(Tool):
 
 
 class RLETool(Tool):
-    def run_length_encode(self, data):
-        """Führt eine Lauflängenkodierung der Eingabedaten durch"""
-        if not data:
-            return []
-
+    def rle_encode(self, data):
+        if len(data) == 0:
+            return [], 0
         encoded = []
+        prev = data[0]
         count = 1
-        current = data[0]
-
         for i in range(1, len(data)):
-            if data[i] == current:
+            if data[i] == prev:
                 count += 1
             else:
-                encoded.append((current, count))
-                current = data[i]
+                encoded.append((prev, count))
+                prev = data[i]
                 count = 1
+        encoded.append((prev, count))
+        return encoded, len(encoded)
 
-        # Füge das letzte Element hinzu
-        encoded.append((current, count))
-        return encoded
+    def rle_decode(self, encoded):
+        output = ''
+        for sym, cnt in encoded:
+            output += sym * cnt
+        return output
 
-    def run_length_decode(self, encoded_data):
-        """Dekodiert eine lauflängenkodierte Sequenz"""
-        decoded = []
-        for symbol, count in encoded_data:
-            decoded.extend([symbol] * count)
-        return decoded
+    def menu(self):
+        print("==== Lauflängenkodierung (RLE) ====")
+        print("Eingabetyp wählen:")
+        print("1: Text")
+        print("2: Binär (nur 0 und 1)")
+        print("3: Beenden")
+        print("Option (1–3):")
 
     def run(self) -> None:
-        print("==== Lauflängenkodierung (RLE) ====")
-        try:
-            inp_type = input("Eingabetyp (text/binär): ").strip().lower()
+        while True:
+            self.menu()
+            try:
+                choice = int(input())
+            except:
+                print("Ungültige Eingabe.")
+                continue
 
-            if inp_type == "text":
-                inp_data = input("Geben Sie den zu kodierenden Text ein: ")
-                original_data = list(inp_data)
-            elif inp_type == "binär" or inp_type == "binär":
-                inp_data = input("Geben Sie die Binärsequenz ein (nur 0 und 1): ")
-                if not all(bit in "01" for bit in inp_data):
-                    raise ValueError("Binärsequenz darf nur 0 und 1 enthalten")
-                original_data = list(inp_data)
+            if choice == 3:
+                print("Beendet.")
+                break
+            elif choice not in [1, 2]:
+                print("Nur 1, 2 oder 3 erlaubt.")
+                continue
+
+            print("Geben Sie den zu kodierenden Text ein:")
+            s = input().strip()
+
+            if choice == 2:
+                valid = True
+                for c in s:
+                    if c not in '01':
+                        print("Nur 0 und 1 erlaubt für binär.")
+                        valid = False
+                        break
+                if not valid:
+                    continue
+
+            encoded, n_units = self.rle_encode(s)
+            print("Eingabe:")
+            print(s)
+
+            print("Lauflängenkodiert:")
+            output_str = ""
+            for sym, cnt in encoded:
+                if cnt == 1:
+                    output_str += sym
+                else:
+                    output_str += sym + str(cnt)
+            print(output_str)
+
+            original_len = len(s)
+            encoded_len = len(output_str)
+            rate = round(encoded_len / original_len, 5)
+            print("Kompressionsrate:", rate)
+            print("Original:", original_len, "Einheiten")
+            print("Kodiert:", encoded_len, "Einheiten")
+
+            decoded = self.rle_decode(encoded)
+            print("Überprüfung:", end=' ')
+            if decoded == s:
+                print("Dekodierung stimmt mit Original überein.")
             else:
-                raise ValueError("Ungültiger Eingabetyp. Bitte 'text' oder 'binär' eingeben.")
+                print("Fehler in der Dekodierung!")
 
-            encoded = self.run_length_encode(original_data)
-
-            print("\nEingabe:")
-            print("".join(original_data))
-
-            print("\nLauflängenkodiert:")
-            if inp_type == "text":
-                for symbol, count in encoded:
-                    print("{}:{}".format(symbol, count), end=" ")
-            else:
-                for symbol, count in encoded:
-                    print("{}×{}".format(symbol, count), end=" ")
-
-            # Berechne Kompressionsrate
-            original_size = len(original_data)
-            # Bei binärer Eingabe müssen wir abschätzen, wie viele Bits pro Paar benötigt werden
-            if inp_type == "binär" or inp_type == "binär":
-                # Ein Bit für das Symbol und log2(max_count) Bits für die Anzahl
-                max_count = max(count for _, count in encoded)
-                bits_for_count = max(1, math.ceil(math.log2(max_count)))
-                encoded_size = len(encoded) * (1 + bits_for_count)
-            else:
-                # Grobe Abschätzung: 8 Bits pro Zeichen + Bits für die Anzahl
-                encoded_size = sum(8 + math.ceil(math.log2(max(1, count))) for _, count in encoded)
-
-            compression_ratio = original_size / encoded_size if encoded_size > 0 else float('inf')
-
-            print("\n\nKompressionsrate: {:.2f}".format(compression_ratio))
-            print("Original: {} Einheiten".format(original_size))
-            print("Kodiert: ~ {} Einheiten".format(encoded_size))
-
-            # Dekodiere zur Überprüfung
-            decoded = self.run_length_decode(encoded)
-            if decoded == original_data:
-                print("\nÜberprüfung: Die Dekodierung stimmt mit der Originaleingabe überein.")
-            else:
-                print("\nWarnung: Die Dekodierung stimmt nicht mit der Originaleingabe überein!")
-
-        except Exception as e:
-            print("Fehler: {}".format(str(e)))
-
-        print("\nDrücke Enter, um fortzufahren...")
-        input()
-
+            print("Drücke Enter zum Fortfahren...")
+            input()  # Wartet auf Enter
 
 class LZW(Tool):
 

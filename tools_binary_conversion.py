@@ -214,7 +214,7 @@ class OctalConverter(Tool):
         input("Enter zum Fortfahren...")
 
 
-class FixedPointConverter:
+class FixedPointConverter(Tool):
     def run(self):
         while True:
             print("=== FIXKOMMA KONVERTER ===")

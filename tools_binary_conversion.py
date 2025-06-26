@@ -521,7 +521,7 @@ class ExcessConverter(Tool):
                 bias = int(input("Bias (z.B. 127): "))
 
                 excess_val = int(binary, 2)
-                decimal = excess_val - bias
+                decimal = excess_val + bias
                 print("Exzess-Wert: {}".format(excess_val))
                 print("Dezimal: {}".format(decimal))
 

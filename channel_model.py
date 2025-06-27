@@ -99,18 +99,18 @@ class BaseChannelTool(Tool):
         """Sichere Eingabe von Ganzzahlen mit Validierung"""
         while True:
             try:
-                user_input = input(prompt + " (oder 'q' für Hauptmenü): ").strip()
-                if user_input.lower() == 'q':
+                in_str = input(prompt + " (oder 'q' für Hauptmenü): ")
+                if in_str.lower() == 'q':
                     return 'q'
 
-                value = int(user_input)
-                if value < min_val:
-                    print("❌ Wert " + str(value) + " < " + str(min_val) + " (Minimum). Bitte erneut eingeben.")
+                in_int = int(in_str)
+                if in_int < min_val:
+                    print("❌ Wert " + str(in_int) + " < " + str(min_val) + " (Minimum). Bitte erneut eingeben.")
                     continue
-                if value > max_val:
-                    print("❌ Wert " + str(value) + " > " + str(max_val) + " (Maximum). Bitte erneut eingeben.")
+                if in_int > max_val:
+                    print("❌ Wert " + str(in_int) + " > " + str(max_val) + " (Maximum). Bitte erneut eingeben.")
                     continue
-                return value
+                return in_int
             except Exception as e:
                 print("❌ Ungültige Eingabe. Bitte eine Ganzzahl eingeben. {}".format(e))
                 continue

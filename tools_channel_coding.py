@@ -109,8 +109,8 @@ class BaseChannelCodingTool(tool_base.Tool):
                     print("❌ Wert " + str(value) + " > " + str(max_val) + " (Maximum).")
                     continue
                 return value
-            except:
-                print("❌ Ungültige Eingabe. Bitte eine Ganzzahl eingeben.")
+            except Exception as e:
+                print("❌ Ungültige Eingabe. Bitte eine Ganzzahl eingeben. {}".format(e))
                 continue
 
     def binary_to_vector(self, binary_str):

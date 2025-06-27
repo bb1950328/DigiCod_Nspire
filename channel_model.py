@@ -111,8 +111,8 @@ class BaseChannelTool(Tool):
                     print("❌ Wert " + str(value) + " > " + str(max_val) + " (Maximum). Bitte erneut eingeben.")
                     continue
                 return value
-            except:
-                print("❌ Ungültige Eingabe. Bitte eine Ganzzahl eingeben.")
+            except Exception as e:
+                print("❌ Ungültige Eingabe. Bitte eine Ganzzahl eingeben. {}".format(e))
                 continue
 
     def wait_for_continue(self):

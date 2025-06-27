@@ -11,16 +11,14 @@ import tools_theory
 TOOLS = [
     tool_base.ToolGroup(1, "Entropie und Kompression", [
         tool_base.ToolEntry(1, "Entropie berechnen", tools_entropy_compression.EntropyTool),
-        tool_base.ToolEntry(2, "Redundanz berechnen", tools_entropy_compression.RedundanzTool),
+        tool_base.ToolEntry(2, "Redundanz berechnen mit Codewortlänge", tools_entropy_compression.RedundanzTool),
         tool_base.ToolEntry(3, "Huffman-Code erstellen", tools_entropy_compression.HuffmanTool),
         tool_base.ToolEntry(4, "Lauflängenkodierung (RLE)", tools_entropy_compression.RLETool),
         tool_base.ToolEntry(5, "Lempel-Ziv LZW", tools_entropy_compression.LZW),
         tool_base.ToolEntry(6, "Vollständige Analyse", tools_entropy_compression.InfoAnalyseTool),
     ]),
 
-    tool_base.ToolGroup(2, "RSA", [
-        tool_base.ToolEntry(1, "RSA", tools_rsa.RSA),
-    ]),
+    tool_base.ToolEntry(2, "RSA", tools_rsa.RSA),
 
     tool_base.ToolGroup(3, "Kanalcodierung", [
         tool_base.ToolEntry(1, "Blockcode: Analyse", tools_channel_coding.ComprehensiveCodeAnalysisTool),
@@ -52,7 +50,7 @@ TOOLS = [
         tool_base.ToolEntry(7, "Vollständige Kanalanalyse", channel_model.ComprehensiveChannelAnalysisTool),
     ]),
 
-    tool_base.ToolGroup(6, "Umrechnungen", [
+    tool_base.ToolGroup(6, "Umrechnungen von ... zu ...", [
         tool_base.ToolEntry(1, "Binär", tools_binary_conversion.BinaryConverter),
         tool_base.ToolEntry(2, "Dezimal", tools_binary_conversion.DecimalConverter),
         tool_base.ToolEntry(3, "Hexadezimal", tools_binary_conversion.HexConverter),
@@ -71,9 +69,8 @@ TOOLS = [
         tool_base.ToolEntry(6, "Kombinatorik", tools_probability.Combinatorics),
         tool_base.ToolEntry(7, "Lotto", tools_probability.LottoCalculator),
     ]),
-    tool_base.ToolGroup(8, "Theorie", [
-        tool_base.ToolEntry(1, "Theorie", tools_theory.InformationTheory),
-    ]),
+
+    tool_base.ToolEntry(8, "Theorie", tools_theory.InformationTheory),
 
 ]
 

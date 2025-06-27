@@ -56,7 +56,7 @@ TOOLS = [
         tool_base.ToolEntry(3, "Hexadezimal", tools_binary_conversion.HexConverter),
         tool_base.ToolEntry(4, "2er-Komplement", tools_binary_conversion.TwosComplementConverter),
         tool_base.ToolEntry(5, "Fixkommazahl", tools_binary_conversion.FixedPointConverter),
-        tool_base.ToolEntry(6, "Float", tools_binary_conversion.FloatConverter),
+        tool_base.ToolEntry(6, "Float (IEE 754)", tools_binary_conversion.FloatConverter),
         tool_base.ToolEntry(7, "Exzess", tools_binary_conversion.ExcessConverter),
         tool_base.ToolEntry(8, "Oktal", tools_binary_conversion.OctalConverter),
     ]),

@@ -1,3 +1,5 @@
+import math
+
 from tool_base import Tool
 
 
@@ -366,19 +368,25 @@ class FloatConverter(Tool):
                     print("Mant: {}".format(mant))
 
                     # Rekonstruierte Zahl zeigen
-                    reconstructed = self._ieee754_to_float(ieee)
+                    reconstructed, sign, exponent, mantissa = self._ieee754_to_float(ieee)
                     print("Rekonstruiert: {}".format(reconstructed))
                     print("Differenz: {}".format(abs(decimal - reconstructed)))
 
             elif choice == '2':  # IEEE-754 zu Dezimal
-                ieee = input("IEEE-754 32bit (z.B. 01000000010010010000111111011011): ").strip()
+                ieee = input("IEEE-754 32bit (z.B. 0100 0000 0100 1001 0000 1111 1101 1011): ").strip().replace(" ", "")
                 if len(ieee) != 32:
                     print("Fehler: 32 Bit benötigt!")
                     input("Enter zum Fortfahren...")
                     return
 
-                decimal = self._ieee754_to_float(ieee)
+                decimal, sign, exponent, mantissa = self._ieee754_to_float(ieee)
                 print("Dezimal: {}".format(decimal))
+                show_details = input("Details? (d/Enter): ").strip().lower()
+                if show_details == 'd':
+                    print("Sign: {} ({})".format(sign, "+" if sign==0 else "-"))
+                    print("Exp: {} ({:#010b})".format(exponent, exponent))
+                    print("Mant: {} ({:#023b})".format(mantissa, mantissa))
+
 
             elif choice == '3':  # Addition
                 print("Float-Addition (vereinfacht):")
@@ -396,87 +404,94 @@ class FloatConverter(Tool):
                     print("B: {}".format(ieee_b))
                     print("R: {}".format(ieee_r))
 
-        except ValueError:
-            print("Fehler: Ungültige Eingabe!")
-
-        input("Enter zum Fortfahren...")
+        except ValueError as e:
+            print("Fehler: Ungültige Eingabe! ({})".format(e))
 
     def _float_to_ieee754(self, f):
-        """
-        Manuelle IEEE-754 Konvertierung, die für sehr alte/minimale
-        MicroPython-Versionen (z.B. 3.4) kompatibel ist.
-        Verwendet weder struct noch format(..., 'b').
-        Behandelt keine Sonderfälle wie Inf, NaN oder denormalisierte Zahlen.
-        """
-        if f == 0.0:
-            return '0' * 32
-
-        # 1. Vorzeichen
-        if f < 0:
-            sign_bit = '1'
-            f = -f
-        else:
-            sign_bit = '0'
-
-        # 2. Exponent und Normalisierung
-        exponent = 0
-        while f >= 2.0:
-            f /= 2.0
-            exponent += 1
-        while f < 1.0:
-            f *= 2.0
-            exponent -= 1
-
-        biased_exponent = exponent + 127
-
-        # Manuelle Umwandlung des Exponenten in einen 8-Bit Binärstring
-        # Ersetzt die nicht verfügbare Zeile: exponent_bits = format(biased_exponent, '08b')
-        exponent_bits = ''
-        temp_exp = biased_exponent
-        for _ in range(8):
-            if temp_exp % 2 == 1:
-                exponent_bits = '1' + exponent_bits
-            else:
-                exponent_bits = '0' + exponent_bits
-            temp_exp //= 2  # Integer-Division, entspricht einem Rechts-Shift
-
-        # 3. Mantisse
-        f -= 1.0
-        mantissa_bits = []
-
-        for _ in range(23):
-            f *= 2
-            if f >= 1.0:
-                mantissa_bits.append('1')
-                f -= 1.0
-            else:
-                mantissa_bits.append('0')
-
-        mantissa_str = "".join(mantissa_bits)
-
-        # 4. Zusammensetzen
-        return sign_bit + exponent_bits + mantissa_str
+        integer = self.reverse_ieee_754_conversion(f, 1, 8, 23)
+        return "{:#034b}".format(integer)[2:]
 
     def _ieee754_to_float(self, ieee):
-        """Vereinfachte IEEE-754 Dekodierung"""
-        try:
-            sign = int(ieee[0])
-            exp_bits = ieee[1:9]
-            mant_bits = ieee[9:]
+        return self.ieee_754_conversion(int(ieee, 2), 1, 8, 23)
 
-            exp = int(exp_bits, 2) - 127
+    # For the following two functions from https://gist.github.com/AlexEshoo/d3edc53129ed010b0a5b693b88c7e0b5
+    # Copyright 2024 Alex Eshoo
+    # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+    # The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+    # THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-            # Vereinfachte Berechnung
-            mant_val = 1.0  # Implizite 1
-            for i, bit in enumerate(mant_bits):
-                if bit == '1':
-                    mant_val += 2 ** -(i + 1)
+    def ieee_754_conversion(self, n, sgn_len=1, exp_len=8, mant_len=23):
+        """
+        Converts an arbitrary precision Floating Point number.
+        Note: Since the calculations made by python inherently use floats, the accuracy is poor at high precision.
+        :param n: An unsigned integer of length `sgn_len` + `exp_len` + `mant_len` to be decoded as a float
+        :param sgn_len: number of sign bits
+        :param exp_len: number of exponent bits
+        :param mant_len: number of mantissa bits
+        :return: IEEE 754 Floating Point representation of the number `n`
+        """
+        if n >= 2 ** (sgn_len + exp_len + mant_len):
+            raise ValueError("Number n is longer than prescribed parameters allows")
 
-            result = mant_val * (2 ** exp)
-            return -result if sign else result
+        sign = (n & (2 ** sgn_len - 1) * (2 ** (exp_len + mant_len))) >> (exp_len + mant_len)
+        exponent_raw = (n & ((2 ** exp_len - 1) * (2 ** mant_len))) >> mant_len
+        mantissa = n & (2 ** mant_len - 1)
 
-        except:
-            return 0.0
+        sign_mult = 1
+        if sign == 1:
+            sign_mult = -1
+
+        if exponent_raw == 2 ** exp_len - 1:  # Could be Inf or NaN
+            if mantissa == 2 ** mant_len - 1:
+                return float('nan')  # NaN
+
+            return sign_mult * float('inf')  # Inf
+
+        exponent = exponent_raw - (2 ** (exp_len - 1) - 1)
+
+        if exponent_raw == 0:
+            mant_mult = 0  # Gradual Underflow
+        else:
+            mant_mult = 1
+
+        for b in range(mant_len - 1, -1, -1):
+            if mantissa & (2 ** b):
+                mant_mult += 1 / (2 ** (mant_len - b))
+
+        return sign_mult * (2 ** exponent) * mant_mult, sign, exponent, mantissa
+
+    def reverse_ieee_754_conversion(self, f, sgn_len=1, exp_len=8, mant_len=23):
+        """
+        Converts an IEEE 754 Floating Point representation to a precision Floating Point number.
+        :param f: IEEE 754 Floating Point representation of a number
+        :param sgn_len: number of sign bits
+        :param exp_len: number of exponent bits
+        :param mant_len: number of mantissa bits
+        :return: precision Floating Point number
+        """
+        sign = 0 if f >= 0 else 1
+        sign_bits = sign * (2 ** (exp_len + mant_len))
+
+        if abs(f) == float('inf'):
+            exponent_bits = 2 ** exp_len - 1
+            mantissa_bits = 0 if f >= 0 else 2 ** mant_len - 1
+        elif abs(f) == float('nan'):
+            exponent_bits = 2 ** exp_len - 1
+            mantissa_bits = 2 ** mant_len - 1
+        else:
+            exponent = 0
+            mantissa = 0
+
+            if f != 0:
+                exponent = int(math.log(abs(f), 2))
+                mantissa = abs(f) / (2 ** exponent) - 1
+
+            exponent += (2 ** (exp_len - 1) - 1)
+            exponent_bits = exponent
+            mantissa_bits = int(mantissa * (2 ** mant_len))
+
+        n = sign_bits | (exponent_bits << mant_len) | mantissa_bits
+        return n
 
 
 class ExcessConverter(Tool):

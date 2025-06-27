@@ -1,0 +1,42 @@
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 6.6
+
+=== FLOAT KONVERTER ===
+1) Dezimal -> IEEE-754
+2) IEEE-754 -> Dezimal
+3) Float-Addition
+q) Zurück
+Wahl: 2
+IEEE-754 32bit (z.B. 0100 0000 0100 1001 0000 1111 1101 1011): 0100 0011 0101 0000 0000 0000 0000 0000
+Dezimal: 208.0
+Details? (d/Enter): d
+Sign: 0 (+)
+Exp: 7 (0b00000111)
+Mant: 5242880 (0b10100000000000000000000)
+
+=== FLOAT KONVERTER ===
+1) Dezimal -> IEEE-754
+2) IEEE-754 -> Dezimal
+3) Float-Addition
+q) Zurück
+Wahl: q
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 

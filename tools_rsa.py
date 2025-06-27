@@ -434,6 +434,43 @@ class RSA(Tool):
             'm_final': calculated_m, 'c_final': calculated_c
         }
 
+    def euler_phi(self, n):
+        """
+        Berechnet den Wert der Eulerschen Phi-Funktion (Totient-Funktion) für n.
+        Die Funktion gibt die Anzahl der Zahlen zurück, die zu n teilerfremd sind und kleiner oder gleich n sind.
+        """
+        if n <= 0:
+            return 0
+
+        if n == 1:
+            return 1
+
+        # Berechnung über die Primfaktorzerlegung (effizient)
+        result = n
+
+        # Primfaktorzerlegung
+        temp_n = n
+
+        # Prüfe auf Teiler 2
+        if temp_n % 2 == 0:
+            result = result * (1 - 1 / 2)
+            while temp_n % 2 == 0:
+                temp_n //= 2
+
+        # Prüfe auf ungerade Teiler
+        i = 3
+        while i * i <= temp_n:
+            if temp_n % i == 0:
+                result = result * (1 - 1 / i)
+                while temp_n % i == 0:
+                    temp_n //= i
+            i += 2
+
+        # Falls temp_n > 1 ist, dann ist es eine Primzahl
+        if temp_n > 1:
+            result = result * (1 - 1 / temp_n)
+
+        return int(result)
 
     def run(self) -> None:
         """Umfassendes RSA-Menü für Prüfungen"""
@@ -500,6 +537,7 @@ class RSA(Tool):
             print("1. Neue RSA Analyse")
             print("2. Nur erweiterten euklidischen Algorithmus")
             print("3. Nur modulare Exponentiation")
+            print("4. Nur Eulerische Phi-Funktion")
             print("0. Zurück zum Hauptmenü")
 
             choice = input("Wähle eine Option: ").strip()
@@ -527,6 +565,15 @@ class RSA(Tool):
                 except Exception as e_inner:
                     print("Fehler in mod. Exp.: {}".format(e_inner))
                 input("\nDrücke Enter zum Fortfahren...")
+            elif choice == "4":
+                try:
+                    n = int(input("n für phi(n) eingeben: "))
+                    result = self.euler_phi(n)
+                    print(f"φ({n}) = {result}")
+                except ValueError:
+                    print("Ungültige Eingabe. Bitte eine Zahl eingeben.")
+                except Exception as e_inner:
+                    print("Fehler in Euler-Phi: {}".format(e_inner))
             elif choice == "0":
                 current_menu = "main" # Signalisiert der Hauptschleife (ausserhalb dieser Methode) zu wechseln
                 break # Verlässt die while-Schleife dieser Methode

@@ -1,0 +1,123 @@
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 2
+
+
+==============================
+UMFASSENDE RSA-ANALYSE
+==============================
+Gib alle verfügbaren Parameter ein. Fehlende Werte werden berechnet.
+Lasse Eingaben leer, wenn der Parameter nicht bekannt ist.
+
+Parameter eingeben (Enter für 'nicht verfügbar'):
+Primzahl p: 
+Primzahl q: 
+Modul n (Produkt von p und q): 437
+Öffentlicher Exponent e: 9
+Privater Exponent d: 
+φ(n) (Euler'sche Phi-Funktion, (p-1)*(q-1)): 
+Klartext m (Zahl zum Verschlüsseln): 42
+Chiffretext c (Zahl zum Entschlüsseln): 
+============================================================
+UMFASSENDE RSA-ANALYSE
+============================================================
+
+1. GEGEBENE PARAMETER:
+   m = 42
+   e = 9
+   n = 437
+
+2. PRIMZAHLEN p UND q:
+   Faktorisierung von n = 437:
+   Gefunden: p = 19, q = 23
+   Verifikation: 19 * 23 = 437
+
+3. MODUL n:
+   Gegeben: n = 437
+
+4. EULER-FUNKTION φ(n):
+   Berechnet: φ(n) = (p-1) * (q-1) = (19-1) * (23-1) = 18 * 22 = 396
+
+5. ÖFFENTLICHER UND PRIVATER EXPONENT:
+   Gegeben: e = 9
+   Berechne d mit erweitertem euklidischem Algorithmus (e * d = 1 mod φ(n)):
+
+==== Erweiterter Euklidischer Algorithmus: 9 und 396 ====
+a        b        q        r        x        y       
+--------------------------------------------------
+9        396      0        9        1        0       
+396      9        44       0        0        1       
+9        0        -        -        1        0       
+
+Ergebnis: ggT(9, 396) = 9
+Koeffizienten: 9 * 1 + 396 * 0 = 9
+Verifikation: 9 * 1 + 396 * 0 = 9
+   FEHLER: ggT(e, φ(n)) = ggT(9, 396) = 9 != 1
+   e und φ(n) sind nicht teilerfremd! d kann nicht berechnet werden.
+
+6. SCHLÜSSEL:
+   Öffentlicher Schlüssel:  (e, n) = (9, 437)
+   Privater Schlüssel:      (d, n) = (Unbekannt, 437)
+
+7. VERSCHLÜSSELUNG von m = 42:
+
+==== Modulare Exponentiation: 42^9 mod 437 ====
+Exponent 9 in binär: 1001
+
+Bit (i) | Basis^(2^i) mod M | Altes Ergebnis * B^{2^i} | Neues Ergebnis 
+-----------------------------------------------------------------
+0 (1)  | 42              | 1 * 42 = 42 mod 437 -> 42 | 42             
+1 (0)  | 16              | (ignoriert)        | 42             
+2 (0)  | 256             | (ignoriert)        | 42             
+3 (1)  | 423             | 42 * 423 = 17766 mod 437 -> 286 | 286            
+
+Ergebnis: 42^9 mod 437 = 286
+   Verschlüsselt: c = m^e mod n = 42^9 mod 437 = 286
+
+8. ENTSCHLÜSSELUNG von c = 286:
+   FEHLER: d oder n sind unbekannt. Entschlüsselung nicht möglich.
+
+9. VOLLSTÄNDIGE VERIFIKATION (falls möglich):
+
+10. ZUSAMMENFASSUNG ALLER (potenziell berechneten) PARAMETER:
+    p = 19
+    q = 23
+    n = 437
+    φ(n) = 396
+    e = 9
+    d = Unbekannt/Nicht gegeben
+    Ursprüngliches m = 42
+    Berechnetes/Verschlüsseltes c = 286
+
+Drücke Enter zum Fortfahren...
+
+============================================================
+ANALYSE ABGESCHLOSSEN
+============================================================
+
+Optionen:
+1. Neue RSA Analyse
+2. Nur erweiterten euklidischen Algorithmus
+3. Nur modulare Exponentiation
+4. Nur Eulerische Phi-Funktion
+0. Zurück zum Hauptmenü
+Wähle eine Option: 0
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 

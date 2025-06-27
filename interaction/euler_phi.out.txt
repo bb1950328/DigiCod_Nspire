@@ -1,0 +1,135 @@
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 2
+
+
+==============================
+UMFASSENDE RSA-ANALYSE
+==============================
+Gib alle verfügbaren Parameter ein. Fehlende Werte werden berechnet.
+Lasse Eingaben leer, wenn der Parameter nicht bekannt ist.
+
+Parameter eingeben (Enter für 'nicht verfügbar'):
+Primzahl p: 
+Primzahl q: 
+Modul n (Produkt von p und q): 
+Öffentlicher Exponent e: 
+Privater Exponent d: 
+φ(n) (Euler'sche Phi-Funktion, (p-1)*(q-1)): 
+Klartext m (Zahl zum Verschlüsseln): 
+Chiffretext c (Zahl zum Entschlüsseln): 
+============================================================
+UMFASSENDE RSA-ANALYSE
+============================================================
+
+1. GEGEBENE PARAMETER:
+   Keine Parameter gegeben.
+
+2. PRIMZAHLEN p UND q:
+   FEHLER: Weder (p,q) noch n gegeben! Berechnung für p,q,n,phi nicht möglich.
+
+5. ÖFFENTLICHER UND PRIVATER EXPONENT:
+
+6. SCHLÜSSEL:
+   Öffentlicher Schlüssel:  (e, n) = (Unbekannt, Unbekannt)
+   Privater Schlüssel:      (d, n) = (Unbekannt, Unbekannt)
+
+9. VOLLSTÄNDIGE VERIFIKATION (falls möglich):
+
+10. ZUSAMMENFASSUNG ALLER (potenziell berechneten) PARAMETER:
+    p = Unbekannt/Nicht gegeben
+    q = Unbekannt/Nicht gegeben
+    n = Unbekannt/Nicht gegeben
+    φ(n) = Unbekannt/Nicht gegeben
+    e = Unbekannt/Nicht gegeben
+    d = Unbekannt/Nicht gegeben
+
+Drücke Enter zum Fortfahren...
+
+============================================================
+ANALYSE ABGESCHLOSSEN
+============================================================
+
+Optionen:
+1. Neue RSA Analyse
+2. Nur erweiterten euklidischen Algorithmus
+3. Nur modulare Exponentiation
+4. Nur Eulerische Phi-Funktion
+0. Zurück zum Hauptmenü
+Wähle eine Option: 4
+n für phi(n) eingeben: 77
+φ(77) = 60
+
+==============================
+UMFASSENDE RSA-ANALYSE
+==============================
+Gib alle verfügbaren Parameter ein. Fehlende Werte werden berechnet.
+Lasse Eingaben leer, wenn der Parameter nicht bekannt ist.
+
+Parameter eingeben (Enter für 'nicht verfügbar'):
+Primzahl p: 
+Primzahl q: 
+Modul n (Produkt von p und q): 
+Öffentlicher Exponent e: 
+Privater Exponent d: 
+φ(n) (Euler'sche Phi-Funktion, (p-1)*(q-1)): 
+Klartext m (Zahl zum Verschlüsseln): 
+Chiffretext c (Zahl zum Entschlüsseln): 
+============================================================
+UMFASSENDE RSA-ANALYSE
+============================================================
+
+1. GEGEBENE PARAMETER:
+   Keine Parameter gegeben.
+
+2. PRIMZAHLEN p UND q:
+   FEHLER: Weder (p,q) noch n gegeben! Berechnung für p,q,n,phi nicht möglich.
+
+5. ÖFFENTLICHER UND PRIVATER EXPONENT:
+
+6. SCHLÜSSEL:
+   Öffentlicher Schlüssel:  (e, n) = (Unbekannt, Unbekannt)
+   Privater Schlüssel:      (d, n) = (Unbekannt, Unbekannt)
+
+9. VOLLSTÄNDIGE VERIFIKATION (falls möglich):
+
+10. ZUSAMMENFASSUNG ALLER (potenziell berechneten) PARAMETER:
+    p = Unbekannt/Nicht gegeben
+    q = Unbekannt/Nicht gegeben
+    n = Unbekannt/Nicht gegeben
+    φ(n) = Unbekannt/Nicht gegeben
+    e = Unbekannt/Nicht gegeben
+    d = Unbekannt/Nicht gegeben
+
+Drücke Enter zum Fortfahren...
+
+============================================================
+ANALYSE ABGESCHLOSSEN
+============================================================
+
+Optionen:
+1. Neue RSA Analyse
+2. Nur erweiterten euklidischen Algorithmus
+3. Nur modulare Exponentiation
+4. Nur Eulerische Phi-Funktion
+0. Zurück zum Hauptmenü
+Wähle eine Option: 0
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 

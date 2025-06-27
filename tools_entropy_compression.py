@@ -103,7 +103,7 @@ class HuffmanTool(Tool):
                 print("{}: {}".format(sym, code))
 
             # Calculate average code length
-            avg_length = sum(len(code) * freq for (sym, code), freq in zip(huffman_code.items(), freqs)) / sum(freqs)
+            avg_length = sum(len(code) * freq for (sym, code), freq in zip(huffman_code.items(), freqs))
             print("\nDurchschnittliche Codewortlänge: {:.6f} bits/Symbol".format(avg_length))
 
         except Exception as e:

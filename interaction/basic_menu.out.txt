@@ -5,14 +5,14 @@
 3 Kanalcodierung
 4 Faltungscode
 5 Kanalmodell
-6 Umrechnungen
+6 Umrechnungen von ... zu ...
 7 Wahrscheinlichkeitsrechnung
 8 Theorie
 Nr: 1
 
 # 1 Entropie und Kompression
 1 Entropie berechnen
-2 Redundanz berechnen
+2 Redundanz berechnen mit Codewortlänge
 3 Huffman-Code erstellen
 4 Lauflängenkodierung (RLE)
 5 Lempel-Ziv LZW
@@ -25,7 +25,7 @@ Nr:
 3 Kanalcodierung
 4 Faltungscode
 5 Kanalmodell
-6 Umrechnungen
+6 Umrechnungen von ... zu ...
 7 Wahrscheinlichkeitsrechnung
 8 Theorie
 Nr: 

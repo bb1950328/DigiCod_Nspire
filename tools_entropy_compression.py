@@ -83,7 +83,9 @@ class HuffmanTool(Tool):
             nodes.append([lo[0] + hi[0]] + lo[1:] + hi[1:])
 
         # Extrahiere Codes in ein Dictionary
-        return {sym: code for sym, code in nodes[0][1:]}
+        result = [(sym, code) for sym, code in nodes[0][1:]]
+        result.sort(key=lambda t: symbols.index(t[0]))
+        return result
 
     def run(self) -> None:
         print("==== Huffman-Code erstellen ====")
@@ -99,11 +101,11 @@ class HuffmanTool(Tool):
 
             huffman_code = self.huffman_coding(symbols, freqs)
             print("\nHuffman-Code:")
-            for sym, code in huffman_code.items():
+            for sym, code in huffman_code:
                 print("{}: {}".format(sym, code))
 
             # Calculate average code length
-            avg_length = sum(len(code) * freq for (sym, code), freq in zip(huffman_code.items(), freqs))
+            avg_length = sum(len(code) * freq for (sym, code), freq in zip(huffman_code, freqs))
             print("\nDurchschnittliche Codewortlänge: {:.6f} bits/Symbol".format(avg_length))
 
         except Exception as e:

@@ -1,0 +1,44 @@
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 1.3
+
+==== Huffman-Code erstellen ====
+Anzahl der Symbole: 4
+Symbol 1: A
+Häufigkeit für Symbol 1: 0.5
+Symbol 2: B
+Häufigkeit für Symbol 2: 0.25
+Symbol 3: C
+Häufigkeit für Symbol 3: 0.125
+Symbol 4: D
+Häufigkeit für Symbol 4: 0.125
+
+Huffman-Code:
+A: 1
+B: 01
+C: 001
+D: 000
+
+Durchschnittliche Codewortlänge: 1.750000 bits/Symbol
+
+Drücke Enter, um fortzufahren...
+
+
+# Hauptmenü
+1 Entropie und Kompression
+2 RSA
+3 Kanalcodierung
+4 Faltungscode
+5 Kanalmodell
+6 Umrechnungen von ... zu ...
+7 Wahrscheinlichkeitsrechnung
+8 Theorie
+Nr: 

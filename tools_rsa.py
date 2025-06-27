@@ -569,7 +569,7 @@ class RSA(Tool):
                 try:
                     n = int(input("n für phi(n) eingeben: "))
                     result = self.euler_phi(n)
-                    print(f"φ({n}) = {result}")
+                    print("φ({}) = {}".format(n, result))
                 except ValueError:
                     print("Ungültige Eingabe. Bitte eine Zahl eingeben.")
                 except Exception as e_inner:

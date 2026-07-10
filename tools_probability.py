@@ -277,10 +277,9 @@ class Combinatorics(Tool):
     def _calc_combination(self, n, k):
         if k > n or k < 0:
             return 0
-        if k == 0 or k == n:
+        if k in (0, n):
             return 1
-        if k > n - k:
-            k = n - k
+        k = min(k, n - k)
         result = 1
         for i in range(k):
             result = result * (n - i) // (i + 1)

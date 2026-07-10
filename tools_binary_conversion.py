@@ -2,6 +2,8 @@ import math
 
 from tool_base import Tool
 
+def to_n_bits(bits, decimal):
+    return "{:0{}b}".format(decimal, bits)
 
 class BinaryConverter(Tool):
     def run(self):
@@ -107,13 +109,13 @@ class DecimalConverter(Tool):
             elif choice == '4':  # Zweierkomplement
                 bits = int(input("Bit-Anzahl (z.B. 8): "))
                 if decimal >= 0:
-                    binary = format(decimal, '0{}b'.format(bits))
+                    binary = to_n_bits(bits, decimal)
                 else:
                     # 2er-Komplement berechnen
                     positive = abs(decimal)
                     max_val = 2 ** bits
                     twos_comp = max_val - positive
-                    binary = format(twos_comp, '0{}b'.format(bits))
+                    binary = to_n_bits(bits, twos_comp)
                 print("2er-Kompl.: {}".format(binary))
 
             elif choice == '5':  # Exzess
@@ -274,16 +276,20 @@ class FixedPointConverter(Tool):
                     print("Differenz: %f" % abs(decimal - reconstructed))
 
             elif choice == '2':  # Fixkomma zu Dezimal
-                binary = input("Fixkomma-Binär (z.B. 0101010000000000): ").strip()
-                frac_bits = int(input("Nachkomma-Bits (z.B. 8): "))
+                print("Fixkomma-Binär (z.B. 0101010000000000): ")
+                binary = input("> ").strip()
+                print("Nachkomma-Bits (z.B. 8): ")
+                frac_bits = int(input("> "))
 
                 decimal = self._fixed_to_decimal(binary, frac_bits)
                 print("Dezimal: %f" % decimal)
 
             elif choice == '3':  # Rechnen
                 print("Addition/Subtraktion:")
-                a = input("Fixkomma A (z.B. 0101000000000000): ").strip()
-                b = input("Fixkomma B (z.B. 0010000000000000): ").strip()
+                print("Fixkomma A (z.B. 0101000000000000): ")
+                a = input("> ").strip()
+                print("Fixkomma B (z.B. 0010000000000000): ")
+                b = input("> ").strip()
                 op = input("Operation (+/-): ").strip()
 
                 val_a = int(a, 2)
@@ -373,9 +379,11 @@ class FloatConverter(Tool):
                     print("Differenz: {}".format(abs(decimal - reconstructed)))
 
             elif choice == '2':  # IEEE-754 zu Dezimal
-                ieee = input("IEEE-754 32bit (z.B. 0100 0000 0100 1001 0000 1111 1101 1011): ").strip().replace(" ", "")
+                print("IEEE-754 32bit (z.B. 01000000010010010000111111011011)")
+                ieee = input("> ")
                 if len(ieee) != 32:
-                    print("Fehler: 32 Bit benötigt!")
+                    print("Fehler: 32 Bit benötigt! Gegeben: " + str(len(ieee)))
+                    print("Input: " + str(ieee))
                     input("Enter zum Fortfahren...")
                     return
 
@@ -551,7 +559,7 @@ class ExcessConverter(Tool):
                     input("Enter zum Fortfahren...")
                     return
 
-                binary = format(excess_val, '0{}b'.format(bits))
+                binary = to_n_bits(bits,excess_val)
                 print("Exzess-Wert: {}".format(excess_val))
                 print("Exzess-Binär: {}".format(binary))
 
@@ -571,7 +579,7 @@ class ExcessConverter(Tool):
                 corrected = sum_val - bias
 
                 bits = max(len(a_bin), len(b_bin))
-                result_bin = format(corrected, '0{}b'.format(bits))
+                result_bin = to_n_bits(bits, corrected)
 
                 print("Summe: {}".format(sum_val))
                 print("Korrigiert: {}".format(corrected))

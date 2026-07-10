@@ -1162,7 +1162,7 @@ class InformationTheory(Tool):
 
     def _pause(self):
         """Warte auf Enter-Eingabe"""
-        input('\n<Enter> drücken …')
+        input('<Enter> drücken …')
 
     def _wrap(self, text, width=35):
         """Zeile weich umbrechen (einfach)."""
@@ -1235,7 +1235,7 @@ class InformationTheory(Tool):
 
     def search_db(self):
         """Suche nach Begriffen"""
-        key = input('\nSuchbegriff: ').strip().lower()
+        key = input('Suchbegriff: ').strip().lower()
         hits = [q for q in self.QUESTION_DB
                 if key in q['q'].lower() or any(key in t.lower() for t in q['tags'])]
 
@@ -1294,7 +1294,7 @@ class InformationTheory(Tool):
         print('\n** QUIZ **')
         for line in self._wrap(q['q']):
             print(line)
-        input('\nDeine Antwort (Enter zeigt Lösung)…')
+        input('Deine Antwort (Enter zeigt Lösung)…')
         self.view_question(q)
 
     def statistics(self):

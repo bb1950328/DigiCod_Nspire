@@ -8,6 +8,7 @@
 6 Umrechnungen von ... zu ...
 7 Wahrscheinlichkeitsrechnung
 8 Theorie
+9 ICTH Tool
 Nr: 2
 
 
@@ -96,7 +97,6 @@ Ergebnis: 42^9 mod 437 = 286
     d = Unbekannt/Nicht gegeben
     Ursprüngliches m = 42
     Berechnetes/Verschlüsseltes c = 286
-
 Drücke Enter zum Fortfahren...
 
 ============================================================
@@ -120,4 +120,5 @@ Wähle eine Option: 0
 6 Umrechnungen von ... zu ...
 7 Wahrscheinlichkeitsrechnung
 8 Theorie
+9 ICTH Tool
 Nr: 

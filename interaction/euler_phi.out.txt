@@ -8,6 +8,7 @@
 6 Umrechnungen von ... zu ...
 7 Wahrscheinlichkeitsrechnung
 8 Theorie
+9 ICTH Tool
 Nr: 2
 
 
@@ -51,7 +52,6 @@ UMFASSENDE RSA-ANALYSE
     φ(n) = Unbekannt/Nicht gegeben
     e = Unbekannt/Nicht gegeben
     d = Unbekannt/Nicht gegeben
-
 Drücke Enter zum Fortfahren...
 
 ============================================================
@@ -108,7 +108,6 @@ UMFASSENDE RSA-ANALYSE
     φ(n) = Unbekannt/Nicht gegeben
     e = Unbekannt/Nicht gegeben
     d = Unbekannt/Nicht gegeben
-
 Drücke Enter zum Fortfahren...
 
 ============================================================
@@ -132,4 +131,5 @@ Wähle eine Option: 0
 6 Umrechnungen von ... zu ...
 7 Wahrscheinlichkeitsrechnung
 8 Theorie
+9 ICTH Tool
 Nr: 

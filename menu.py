@@ -1,12 +1,13 @@
+import tool_base
 import tools_entropy_compression
 import tools_rsa
-import tool_base
 import tools_channel_coding
 import tools_convolutional_code
-import channel_model
+import tools_channel_model
 import tools_binary_conversion
 import tools_probability
 import tools_theory
+import tools_icth
 
 TOOLS = [
     tool_base.ToolGroup(1, "Entropie und Kompression", [
@@ -40,13 +41,14 @@ TOOLS = [
     ]),
 
     tool_base.ToolGroup(5, "Kanalmodell", [
-        tool_base.ToolEntry(1, "Transinformation", channel_model.TransinformationTool),
-        tool_base.ToolEntry(2, "Maximum-Likelihood", channel_model.MaximumLikelihoodTool),
-        tool_base.ToolEntry(3, "Entropie berechnen", channel_model.EntropyCalculationTool),
-        tool_base.ToolEntry(4, "Binärer symmetrischer Kanal", channel_model.BinarySymmetricChannelTool),
-        tool_base.ToolEntry(5, "Kanalmatrix bestimmen", channel_model.ChannelMatrixDeterminationTool),
-        tool_base.ToolEntry(6, "Kanaltyp analysieren", channel_model.ChannelTypeAnalysisTool),
-        tool_base.ToolEntry(7, "Vollständige Kanalanalyse", channel_model.ComprehensiveChannelAnalysisTool),
+        tool_base.ToolEntry(1, "Transinformation", tools_channel_model.TransinformationTool),
+        tool_base.ToolEntry(2, "Maximum-Likelihood", tools_channel_model.MaximumLikelihoodTool),
+        tool_base.ToolEntry(3, "Maximum-A-Posteriori", tools_channel_model.MaximumAPosterioriTool),
+        tool_base.ToolEntry(4, "Entropie berechnen", tools_channel_model.EntropyCalculationTool),
+        tool_base.ToolEntry(5, "Binärer symmetrischer Kanal", tools_channel_model.BinarySymmetricChannelTool),
+        tool_base.ToolEntry(6, "Kanalmatrix bestimmen", tools_channel_model.ChannelMatrixDeterminationTool),
+        tool_base.ToolEntry(7, "Kanaltyp analysieren", tools_channel_model.ChannelTypeAnalysisTool),
+        tool_base.ToolEntry(8, "Vollständige Kanalanalyse", tools_channel_model.ComprehensiveChannelAnalysisTool),
     ]),
 
     tool_base.ToolGroup(6, "Umrechnungen von ... zu ...", [
@@ -70,6 +72,7 @@ TOOLS = [
     ]),
 
     tool_base.ToolEntry(8, "Theorie", tools_theory.InformationTheory),
+    tool_base.ToolEntry(9, "ICTH Tool", tools_icth.ICTH),
 
 ]
 
@@ -103,12 +106,11 @@ def select_tool(tools) -> None:
 
         input_str = input("Nr: ").strip()
 
-        if input_str == "":
+        if input_str in ["", "q"]:
             if path:
                 path.pop()  # Go up one level
                 continue
-            else:
-                return  # Exit menu
+            return  # Exit menu
 
         try:
             parts = list(map(int, input_str.split(".")))

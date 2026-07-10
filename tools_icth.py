@@ -3,6 +3,7 @@ ICTh Prüfungstool für TI nspire CX II
 Dieses Tool enthält nützliche Funktionen für die ICTh-Prüfung.
 """
 
+from tool_base import Tool
 import math
 
 # Globale Variablen für Rückkehr zum Hauptmenü
@@ -21,7 +22,11 @@ def clear_screen():
 
 def pause():
     """Pausiert das Programm bis Benutzer eine Taste drückt"""
-    input("\nDrücke Enter zum Fortfahren...")
+    input("Drücke Enter zum Fortfahren...")
+
+def zfl(s, width):
+    """zfill for micropython"""
+    return '{:0>{w}}'.format(s, w=width)
 
 
 #####################
@@ -220,18 +225,18 @@ def print_encoding_steps(data, initial_dict=None):
         # Automatisch alle eindeutigen Zeichen aus der Eingabe verwenden
         unique_chars = sorted(set(data))
         dictionary = {char: i for i, char in enumerate(unique_chars)}
-        print(f"Automatisches Wörterbuch für Zeichen: {unique_chars}")
+        print("Automatisches Wörterbuch für Zeichen: {}".format(unique_chars))
     elif isinstance(initial_dict, list):
         dictionary = {char: i for i, char in enumerate(initial_dict)}
-        print(f"Anfangswörterbuch aus Liste: {initial_dict}")
+        print("Anfangswörterbuch aus Liste: {}".format(initial_dict))
     elif isinstance(initial_dict, dict):
         dictionary = initial_dict.copy()
-        print(f"Vorgegebenes Wörterbuch: {initial_dict}")
+        print("Vorgegebenes Wörterbuch: {}".format(initial_dict))
     else:
         raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
 
-    print(f"Eingabe: {data}")
-    print(f"Startwörterbuch: {dictionary}")
+    print("Eingabe: {}".format(data))
+    print("Startwörterbuch: {}".format(dictionary))
     print("\nKodierungsschritte:")
     print("Buffer | Erkannte Zeichenfolge (Index) | Neuer Eintrag")
     print("-" * 60)
@@ -253,7 +258,14 @@ def print_encoding_steps(data, initial_dict=None):
                 result.append(index)
                 next_entry_index = len(dictionary)
                 print(
-                    f"{buffer:<6} | {current_string} ({index}){' ' * (20 - len(current_string) - len(str(index)))} | → {next_entry_index}: {new_string}")
+                    "{:<6} | {} ({}){} | → {}: {}".format(
+buffer,
+current_string,
+index,
+' ' * (20 - len(current_string) - len(str(index))),
+next_entry_index,
+new_string
+                        ))
                 dictionary[new_string] = next_entry_index
 
             current_string = char
@@ -263,14 +275,22 @@ def print_encoding_steps(data, initial_dict=None):
     if current_string:
         index = dictionary[current_string]
         result.append(index)
-        print(f"{data[buffer_pos:]:<6} | {current_string} ({index})")
+        print("{:<6} | {} ({})".format(
+data[buffer_pos:],
+current_string,
+index
+        ))
 
-    print(f"\nKodierte Nachricht: {' '.join(map(str, result))}")
+    print("\nKodierte Nachricht: {}".format(
+' '.join(map(str, result))
+    ))
 
     # Zeige finales Wörterbuch
-    print(f"\nFinales Wörterbuch:")
+    print("\nFinales Wörterbuch:")
     for key, value in sorted(dictionary.items(), key=lambda x: x[1]):
-        print(f"Index {value}: '{key}'")
+        print("Index {}: '{}'".format(
+value,key
+        ))
 
     return result, dictionary
 
@@ -287,7 +307,7 @@ def create_initial_dict_from_input():
     print("5. Benutzerdefiniert")
 
     choice = input("Wähle eine Option (1-5): ").strip()
-    print(f"Gewählte Option: {choice}")  # Debug-Ausgabe
+    print("Gewählte Option: {}".format(choice))  # Debug-Ausgabe
 
     if choice == "1":
         print("→ Automatische Erkennung gewählt")
@@ -306,13 +326,13 @@ def create_initial_dict_from_input():
         chars_input = input("Zeichen eingeben (ohne Leerzeichen, z.B. 'abcd123'): ").strip()
         if chars_input:
             custom_dict = list(chars_input)
-            print(f"Benutzerdefiniertes Wörterbuch: {custom_dict}")
+            print("Benutzerdefiniertes Wörterbuch: {}".format(custom_dict))
             return custom_dict
         else:
             print("Keine Eingabe - verwende Standard (Ziffern 0-9)")
             return [str(i) for i in range(10)]
     else:
-        print(f"Ungültige Eingabe '{choice}' - verwende Standard (Ziffern 0-9)")
+        print("Ungültige Eingabe '{}' - verwende Standard (Ziffern 0-9)".format(choice))
         return [str(i) for i in range(10)]  # Default
 
 def entropie_menu():
@@ -329,7 +349,7 @@ def entropie_menu():
         print("5. LZW mit Schritt-Anzeige")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Entropie berechnen
@@ -339,13 +359,13 @@ def entropie_menu():
                 n = int(input("Anzahl der Symbole: "))
                 probs = []
                 for i in range(n):
-                    p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
+                    p = float(input("Wahrscheinlichkeit für Symbol {}: ".format(i + 1)))
                     probs.append(p)
 
                 result = entropy(probs)
-                print(f"\nEntropie: {result:.6f} bits/Symbol")
+                print("\nEntropie: {:.6f} bits/Symbol".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -357,15 +377,15 @@ def entropie_menu():
                 probs = []
                 lengths = []
                 for i in range(n):
-                    p = float(input(f"Wahrscheinlichkeit für Symbol {i + 1}: "))
-                    l = float(input(f"Codewortlänge für Symbol {i + 1}: "))
+                    p = float(input("Wahrscheinlichkeit für Symbol {}: ".format(i + 1)))
+                    l = float(input("Codewortlänge für Symbol {}: ".format(i + 1)))
                     probs.append(p)
                     lengths.append(l)
 
                 result = redundanz(probs, lengths)
-                print(f"\nRedundanz: {result:.6f} bits/Symbol")
+                print("\nRedundanz: {:.6f} bits/Symbol".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -377,17 +397,17 @@ def entropie_menu():
                 symbols = []
                 freqs = []
                 for i in range(n):
-                    s = input(f"Symbol {i + 1}: ")
-                    f = float(input(f"Wahrscheinlichkeit für Symbol {s}: "))
+                    s = input("Symbol {}: ".format(i + 1))
+                    f = float(input("Wahrscheinlichkeit für Symbol {}: ".format(s)))
                     symbols.append(s)
                     freqs.append(f)
 
                 huffman_code = huffman_coding(symbols, freqs)
                 print("\nHuffman-Code:")
                 for sym, code in huffman_code.items():
-                    print(f"{sym}: {code}")
+                    print("{}: {}".format(sym,code))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -396,24 +416,24 @@ def entropie_menu():
             print("==== Lauflängenkodierung (RLE) ====")
             print("1. Kodieren")
             print("2. Dekodieren")
-            subchoice = input("\nWähle eine Option: ")
+            subchoice = input("Wähle eine Option: ")
 
             if subchoice == "1":
                 try:
                     data = input("Eingabe (Bitfolge): ")
                     result = rle_encode(data)
-                    print(f"\nRLE-Kodiert: {result}")
+                    print("\nRLE-Kodiert: {}".format(result))
                 except Exception as e:
-                    print(f"Fehler: {str(e)}")
+                    print("Fehler: {}".format(str(e)))
 
             elif subchoice == "2":
                 try:
                     data = input("Eingabe (RLE-Kodiert): ")
                     start = input("Startet mit ('0' oder '1', Default '1'): ") or "1"
                     result = rle_decode(data, start)
-                    print(f"\nDekodiert: {result}")
+                    print("\nDekodiert: {}".format(result))
                 except Exception as e:
-                    print(f"Fehler: {str(e)}")
+                    print("Fehler: {}".format(str(e)))
 
             pause()
 
@@ -423,35 +443,35 @@ def entropie_menu():
             print("==== LZW mit Schritt-Anzeige ====")
             try:
                 data = input("Eingabe: ")  # Nicht mehr "Ziffernfolge"!
-                print(f"Eingabe erhalten: '{data}'")
+                print("Eingabe erhalten: '{}'".format(data))
 
                 # HIER war das Hauptproblem - create_initial_dict_from_input() wurde NICHT aufgerufen!
                 initial_dict = create_initial_dict_from_input()
-                print(f"Gewähltes Wörterbuch für Schritt-Anzeige: {initial_dict}")
+                print("Gewähltes Wörterbuch für Schritt-Anzeige: {}".format(initial_dict))
 
-                print(f"\n{'=' * 60}")
+                print("\n{}".format('=' * 60))
                 result, final_dict = print_encoding_steps(data, initial_dict)  # MIT Parameter!
-                print(f"{'=' * 60}")
+                print("{}".format('=' * 60))
 
                 # Test der Dekodierung
                 decoded = lzw_decode(result, initial_dict)  # MIT Parameter!
-                print(f"\nVerifikation:")
-                print(f"Original:   '{data}'")
-                print(f"Dekodiert:  '{decoded}'")
-                print(f"Korrekt:    {'✓' if data == decoded else '✗'}")
+                print("\nVerifikation:")
+                print("Original:   '{}'".format(data))
+                print("Dekodiert:  '{}'".format(decoded))
+                print("Korrekt:    {}".format('✓' if data == decoded else '✗'))
 
                 # Kompressionsrate
                 if result:
                     # Berechne Bits für Original
                     if initial_dict is None:
                         alphabet_size = len(set(data))
-                        print(f"Automatisches Alphabet: {sorted(set(data))} (Größe: {alphabet_size})")
+                        print("Automatisches Alphabet: {} (Größe: {})".format(sorted(set(data)),alphabet_size))
                     elif isinstance(initial_dict, list):
                         alphabet_size = len(initial_dict)
-                        print(f"Verwendetes Alphabet: {initial_dict} (Größe: {alphabet_size})")
+                        print("Verwendetes Alphabet: {} (Größe: {})".format(initial_dict,alphabet_size))
                     else:
                         alphabet_size = len(initial_dict)
-                        print(f"Dictionary-Alphabet (Größe: {alphabet_size})")
+                        print("Dictionary-Alphabet (Größe: {})".format(alphabet_size))
 
                     bits_per_char = max(1, alphabet_size.bit_length())
                     original_bits = len(data) * bits_per_char
@@ -463,14 +483,14 @@ def entropie_menu():
 
                     compression_ratio = (1 - compressed_bits / original_bits) * 100 if original_bits > 0 else 0
 
-                    print(f"\nKompression:")
-                    print(f"Alphabet-Größe: {alphabet_size} (benötigt {bits_per_char} Bit pro Zeichen)")
-                    print(f"Original: {original_bits} Bits ({len(data)} Zeichen × {bits_per_char} Bit)")
-                    print(f"Komprimiert: {compressed_bits} Bits ({len(result)} Codes × {bits_per_code} Bit)")
-                    print(f"Kompressionsrate: {compression_ratio:.1f}%")
+                    print("\nKompression:")
+                    print("Alphabet-Größe: {} (benötigt {} Bit pro Zeichen)".format(alphabet_size,bits_per_char))
+                    print("Original: {} Bits ({} Zeichen × {} Bit)".format(original_bits,len(data),bits_per_char))
+                    print("Komprimiert: {} Bits ({} Codes × {} Bit)".format(compressed_bits,len(result),bits_per_code))
+                    print("Kompressionsrate: {:.1f}%".format(compression_ratio))
 
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
                 import traceback
                 traceback.print_exc()
             pause()
@@ -633,7 +653,7 @@ def calculate_error_syndrome(position, generator, codeword_length):
 
     # Auffüllen mit führenden Nullen falls nötig
     syndrome_bits = len(generator) - 1
-    syndrome = syndrome.zfill(syndrome_bits)
+    syndrome = zfl(syndrome,syndrome_bits)
 
     # Binäre Form des Syndroms
     binary_form = [int(bit) for bit in syndrome]
@@ -647,7 +667,7 @@ def calculate_error_syndrome(position, generator, codeword_length):
             elif syndrome_bits - i - 1 == 1:
                 term = "x"
             else:
-                term = f"x^{syndrome_bits - i - 1}"
+                term = "x^{}".format(syndrome_bits - i - 1)
 
             if polynomial_form:
                 polynomial_form += " + " + term
@@ -680,7 +700,8 @@ def create_syndrome_table_for_cyclic_code(generator, codeword_length=None):
 
     # Für jede mögliche Fehlerposition
     for position in range(codeword_length):
-        error_term = f"x^{position}" if position > 1 else ("x" if position == 1 else "1")
+        npos = codeword_length - position - 1
+        error_term = "x^{}".format(npos) if npos > 1 else ("x" if npos == 1 else "1")
         poly_syndrome, bin_syndrome = calculate_error_syndrome(position, generator, codeword_length)
         syndrome_table[error_term] = (poly_syndrome, bin_syndrome)
 
@@ -807,7 +828,7 @@ def dec_to_bin(dec_num, width=None):
     """Wandelt eine Dezimalzahl in einen Binärstring um"""
     bin_str = bin(dec_num)[2:]  # [2:] entfernt "0b" Präfix
     if width:
-        bin_str = bin_str.zfill(width)
+        bin_str = zfl(bin_str,width)
     return bin_str
 
 
@@ -815,7 +836,7 @@ def hex_to_bin(hex_str, width=None):
     """Wandelt einen Hexstring in einen Binärstring um"""
     bin_str = bin(int(hex_str, 16))[2:]
     if width:
-        bin_str = bin_str.zfill(width)
+        bin_str = zfl(bin_str,width)
     return bin_str
 
 
@@ -833,7 +854,7 @@ def twos_complement_to_decimal(bits):
 def decimal_to_twos_complement(n, bits):
     """Wandelt Dezimalzahl in Zweierkomplement mit n Bits um"""
     if n >= 0:
-        binary = bin(n)[2:].zfill(bits)
+        binary = zfl(bin(n)[2:],bits)
         return binary[-bits:]
     else:
         binary = bin((1 << bits) + n)[2:]
@@ -845,7 +866,7 @@ def float_to_bin(num):
     import struct
     packed = struct.pack('!f', num)
     integer = int.from_bytes(packed, 'big')
-    return bin(integer)[2:].zfill(32)
+    return zfl(bin(integer)[2:],32)
 
 
 def analyze_ieee754(bits):
@@ -883,7 +904,7 @@ def rsa_menu():
         print("5. Erweiterter Euklidischer Algorithmus")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # RSA Schlüssel generieren
@@ -903,7 +924,7 @@ def rsa_menu():
                 print("\nÖffentlicher Schlüssel (e, n):", public_key)
                 print("Privater Schlüssel (d, n):", private_key)
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -916,9 +937,9 @@ def rsa_menu():
                 n = int(input("Modulus n: "))
 
                 ciphertext = rsa_encrypt(message, (e, n))
-                print(f"\nVerschlüsselt: {ciphertext}")
+                print("\nVerschlüsselt: {}".format(ciphertext))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -931,9 +952,9 @@ def rsa_menu():
                 n = int(input("Modulus n: "))
 
                 plaintext = rsa_decrypt(ciphertext, (d, n))
-                print(f"\nEntschlüsselt: {plaintext}")
+                print("\nEntschlüsselt: {}".format(plaintext))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -945,10 +966,10 @@ def rsa_menu():
                 m = int(input("Modulus m: "))
 
                 inverse = mod_inverse(a, m)
-                print(f"\nModulares Inverses von {a} mod {m}: {inverse}")
-                print(f"Überprüfung: {a} * {inverse} mod {m} = {(a * inverse) % m}")
+                print("\nModulares Inverses von {} mod {}: {}".format(a,m,inverse))
+                print("Überprüfung: {} * {} mod {} = {}".format(a,inverse,m,(a * inverse) % m))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "5":
@@ -960,11 +981,11 @@ def rsa_menu():
                 b = int(input("Zahl b: "))
 
                 gcd, x, y = extended_gcd(a, b)
-                print(f"\nggT({a}, {b}) = {gcd}")
-                print(f"Koeffizienten x, y: {x}, {y}")
-                print(f"Überprüfung: {a}*{x} + {b}*{y} = {a * x + b * y}")
+                print("\nggT({}, {}) = {}".format(a,b,gcd))
+                print("Koeffizienten x, y: {}, {}".format(x,y))
+                print("Überprüfung: {}*{} + {}*{} = {}".format(a,x,b,y,a * x + b * y))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -984,7 +1005,7 @@ def kanal_menu():
         print("4. Fehlersyndrom berechnen")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Hamming-Distanz
@@ -998,9 +1019,9 @@ def kanal_menu():
                     print("Fehler: Die Bitfolgen müssen gleich lang sein!")
                 else:
                     distance = hamming_distance(str1, str2)
-                    print(f"\nHamming-Distanz: {distance}")
+                    print("\nHamming-Distanz: {}".format(distance))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1013,10 +1034,10 @@ def kanal_menu():
                 n_check_bits = len(generator) - 1
 
                 check_bits = crc_compute(data, generator, n_check_bits)
-                print(f"\nCRC-Prüfbits: {check_bits}")
-                print(f"Vollständiges Codewort: {data + check_bits}")
+                print("\nCRC-Prüfbits: {}".format(check_bits))
+                print("Vollständiges Codewort: {}".format(data + check_bits))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -1034,7 +1055,7 @@ def kanal_menu():
                 else:
                     print("\nNachricht enthält Fehler!")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -1046,16 +1067,16 @@ def kanal_menu():
                 n_rows = int(input("Anzahl der Zeilen in der Prüfmatrix: "))
                 n_cols = int(input("Anzahl der Spalten in der Prüfmatrix: "))
 
-                print(f"\nGib die Prüfmatrix ({n_rows}x{n_cols}) ein:")
+                print("\nGib die Prüfmatrix ({}x{}) ein:".format(n_rows,n_cols))
                 parity_matrix = []
                 for i in range(n_rows):
-                    row = input(f"Zeile {i + 1}: ")
+                    row = input("Zeile {}: ".format(i + 1))
                     parity_matrix.append([int(bit) for bit in row])
 
                 synd = syndrome(received, parity_matrix)
-                print(f"\nFehlersyndrom: {synd}")
+                print("\nFehlersyndrom: {}".format(synd))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -1073,7 +1094,7 @@ def faltungscode_menu():
         print("2. Viterbi-Decodierung (vereinfacht)")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Faltungscode Codierung
@@ -1085,12 +1106,12 @@ def faltungscode_menu():
 
                 generator_polynomials = []
                 for i in range(n_polys):
-                    poly = input(f"Generatorpolynom {i + 1} (Bitfolge): ")
+                    poly = input("Generatorpolynom {} (Bitfolge): ".format(i + 1))
                     generator_polynomials.append(poly)
 
                 output = get_convolution_output(input_bits, generator_polynomials)
                 output_str = ''.join(str(bit) for bit in output)
-                print(f"\nKodierte Ausgabe: {output_str}")
+                print("\nKodierte Ausgabe: {}".format(output_str))
 
                 # Gruppiere die Ausgabe je nach Anzahl der Polynome
                 grouped = []
@@ -1099,7 +1120,7 @@ def faltungscode_menu():
 
                 print("Gruppiert:", ' '.join(grouped))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1116,7 +1137,7 @@ def faltungscode_menu():
                 print("Trellis-Übergänge: (vorheriger Zustand, Ausgabe, nächster Zustand)")
                 print("(0, 00, 0), (0, 11, 1), (1, 10, 0), (1, 01, 1)")
 
-                received_bits = input("\nEmpfangene Bits: ")
+                received_bits = input("Empfangene Bits: ")
 
                 # Vereinfachtes Trellis für ein Beispiel
                 trellis = [
@@ -1127,9 +1148,9 @@ def faltungscode_menu():
                 ]
 
                 decoded = viterbi_simplified([int(bit) for bit in received_bits], trellis, 2)
-                print(f"\nDekodiert: {''.join(str(bit) for bit in decoded)}")
+                print("\nDekodiert: {}".format(''.join(str(bit) for bit in decoded)))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -1147,7 +1168,7 @@ def kanalmodell_menu():
         print("2. Maximum-Likelihood-Decodierung")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Transinformation
@@ -1160,23 +1181,23 @@ def kanalmodell_menu():
                 print("\nEingabewahrscheinlichkeiten p(x):")
                 px = []
                 for i in range(n_input):
-                    p = float(input(f"p(x{i}): "))
+                    p = float(input("p(x{}): ".format(i)))
                     px.append(p)
 
                 print("\nKanalmatrix p(y|x):")
                 pyx = []
                 for i in range(n_input):
                     row = []
-                    print(f"Für x{i}:")
+                    print("Für x{}:".format(i))
                     for j in range(n_output):
-                        p = float(input(f"p(y{j}|x{i}): "))
+                        p = float(input("p(y{}|x{}): ".format(j,i)))
                         row.append(p)
                     pyx.append(row)
 
                 result = transinformation(px, pyx)
-                print(f"\nTransinformation: {result:.6f} bits/Symbol")
+                print("\nTransinformation: {:.6f} bits/Symbol".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1191,9 +1212,9 @@ def kanalmodell_menu():
                 channel_matrix = []
                 for i in range(n_input):
                     row = []
-                    print(f"Für x{i}:")
+                    print("Für x{}:".format(i))
                     for j in range(n_output):
-                        p = float(input(f"p(y{j}|x{i}): "))
+                        p = float(input("p(y{}|x{}): ".format(j,i)))
                         row.append(p)
                     channel_matrix.append(row)
 
@@ -1201,9 +1222,9 @@ def kanalmodell_menu():
 
                 print("\nMaximum-Likelihood-Dekodierung:")
                 for j in range(n_output):
-                    print(f"y{j} → x{decoder[j]}")
+                    print("y{} → x{}".format(j,decoder[j]))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -1226,7 +1247,7 @@ def binär_menu():
         print("7. IEEE 754 Binär → Float")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Binär → Dezimal
@@ -1235,9 +1256,9 @@ def binär_menu():
             try:
                 bin_str = input("Binärzahl: ")
                 result = bin_to_dec(bin_str)
-                print(f"\nDezimal: {result}")
+                print("\nDezimal: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1253,9 +1274,9 @@ def binär_menu():
                 else:
                     result = dec_to_bin(dec_num)
 
-                print(f"\nBinär: {result}")
+                print("\nBinär: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -1271,9 +1292,9 @@ def binär_menu():
                 else:
                     result = hex_to_bin(hex_str)
 
-                print(f"\nBinär: {result}")
+                print("\nBinär: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -1283,9 +1304,9 @@ def binär_menu():
             try:
                 bits = input("Zweierkomplement-Binärzahl: ")
                 result = twos_complement_to_decimal(bits)
-                print(f"\nDezimal: {result}")
+                print("\nDezimal: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "5":
@@ -1297,9 +1318,9 @@ def binär_menu():
                 bits = int(input("Anzahl Bits: "))
 
                 result = decimal_to_twos_complement(n, bits)
-                print(f"\nZweierkomplement: {result}")
+                print("\nZweierkomplement: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "6":
@@ -1315,13 +1336,13 @@ def binär_menu():
                 exponent = result[1:9]
                 mantissa = result[9:]
 
-                print(f"\nIEEE 754 Single Precision:")
-                print(f"Vorzeichen: {sign}")
-                print(f"Exponent: {exponent}")
-                print(f"Mantisse: {mantissa}")
-                print(f"Vollständig: {result}")
+                print("\nIEEE 754 Single Precision:")
+                print("Vorzeichen: {}".format(sign))
+                print("Exponent: {}".format(exponent))
+                print("Mantisse: {}".format(mantissa))
+                print("Vollständig: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "7":
@@ -1333,7 +1354,7 @@ def binär_menu():
 
                 # Stelle sicher, dass es 32 Bit sind
                 if len(bits) != 32:
-                    bits = bits.zfill(32)
+                    bits = zfl(bits,32)
 
                 result = analyze_ieee754(bits)
 
@@ -1341,13 +1362,17 @@ def binär_menu():
                 sign = bits[0]
                 exponent = bits[1:9]
                 mantissa = bits[9:]
+                exp_dec = int(exponent, 2)
+                exp_bin = 0
+                while 2 ** exp_bin < exp_dec:
+                    exp_bin += 1
 
-                print(f"\nVorzeichen: {sign}")
-                print(f"Exponent: {exponent} (Dezimal: {int(exponent, 2)})")
-                print(f"Mantisse: {mantissa}")
-                print(f"Dezimalwert: {result}")
+                print("\nVorzeichen: {}".format(sign))
+                print("Exponent: {} (Dezimal: {}, 2^{})".format(exponent,exp_dec, exp_bin - 1))
+                print("Mantisse: {}".format(mantissa))
+                print("Dezimalwert: {}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -1443,7 +1468,7 @@ def generate_cyclic_codewords(generator, message_length):
     # Generiere alle möglichen Nachrichtenmuster
     for i in range(2 ** message_length):
         # In Binärdarstellung umwandeln und mit führenden Nullen auffüllen
-        message = bin(i)[2:].zfill(message_length)
+        message = zfl(bin(i)[2:],message_length)
 
         # Kontrollbits mit CRC-ähnlicher Methode berechnen
         padded_message = message + '0' * check_bits
@@ -1514,7 +1539,7 @@ def zyklischer_code_menu():
         print("4. Syndromtabelle für zyklischen Code erstellen")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Polynomdivision für Syndrom
@@ -1525,9 +1550,9 @@ def zyklischer_code_menu():
                 generator = input("Generator-Polynom (Bitfolge): ")
 
                 syndrome = polynomial_division_for_syndrome(message, generator)
-                print(f"\nSyndrom: {syndrome}")
+                print("\nSyndrom: {}".format(syndrome))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1545,19 +1570,19 @@ def zyklischer_code_menu():
                     print("\nBerechnungsschritte:")
                     for i, step in enumerate(steps):
                         if i == 0:
-                            print(f"Codewort: {step}")
+                            print("Codewort: {}".format(step))
                         else:
-                            print(f"Schritt {i}: {step}")
+                            print("Schritt {}: {}".format(i,step))
                 else:
                     is_valid, result = fast_multiple_addition(generator, codeword, False)
 
-                print(f"\nErgebnis: {result}")
+                print("\nErgebnis: {}".format(result))
                 if is_valid:
                     print("Das Codewort ist gültig!")
                 else:
                     print("Das Codewort enthält Fehler!")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -1570,7 +1595,7 @@ def zyklischer_code_menu():
 
                 codewords = generate_cyclic_codewords(generator, message_length)
 
-                print(f"\nAnzahl der gültigen Codeworte: {len(codewords)}")
+                print("\nAnzahl der gültigen Codeworte: {}".format(len(codewords)))
                 print("\nEinige Beispiel-Codeworte:")
                 for i in range(min(10, len(codewords))):
                     print(codewords[i])
@@ -1578,7 +1603,7 @@ def zyklischer_code_menu():
                 if len(codewords) > 10:
                     print("...")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -1596,19 +1621,314 @@ def zyklischer_code_menu():
                     syndrome_table = create_syndrome_table_for_cyclic_code(generator)
 
                 print("\nSyndromtabelle für Fehlerstellen:")
-                print(f"{'Fehler':<8} {'Syndrom':<15} {'Binär'}")
-                print("-" * 40)
+                print("{:<8} {:<15} {}".format('Fehler','Syndrom','Binär'))
+                print("-" * 35)
 
-                for error_term, (poly_form, bin_form) in syndrome_table.items():
-                    bin_str = f"[{' '.join(str(bit) for bit in bin_form)}]"
-                    print(f"{error_term:<8} {poly_form:<15} {bin_str}")
+                for error_term, (poly_form, bin_form) in sorted(syndrome_table.items(), key=lambda x: x[0]):
+                    bin_str = "[{}]".format(' '.join(str(bit) for bit in bin_form))
+                    print("{:<8} {:<15} {}".format(error_term,poly_form,bin_str))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
             current_menu = "main"
 
+def input_poly():
+    print("Primitives Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+    poly_str = input("> ")
+    poly = [int(bit) for bit in poly_str]
+
+    # Entferne führende Nullen
+    while poly and poly[0] == 0:
+        poly = poly[1:]
+    return poly
+
+def input_poly_a_b():
+    polys = []
+    for c in ['a', 'b']:
+        poly = input_poly()
+
+        if not poly:
+            print("\nUngültiges Polynom (leer).")
+            return [None, None]
+        else:
+            polys.append(poly)
+    return polys
+
+def print_poly(p):
+    bin_repr = ''.join(str(bit) for bit in p)
+
+    # Polynomdarstellung
+    degree = len(p) - 1
+    poly_terms = []
+    for j, bit in enumerate([int(x) for x in p]):
+        if bit == 1:
+            power = degree - j
+            if power == 0:
+                poly_terms.append("1")
+            elif power == 1:
+                poly_terms.append("x")
+            else:
+                poly_terms.append("x^{}".format(power))
+
+    poly_repr = " + ".join(poly_terms) if poly_terms else "0"
+
+    print("{} ({})".format(poly_repr,bin_repr))
+
+def poly_mul_gf2():
+    a,b = input_poly_a_b()
+    if not a or not b:
+        return
+    res = multiply_polynomials_gf2(a,b)
+    print("Resultat")
+    print_poly(res)
+    pause()
+
+def poly_div_gf2():
+    a,b = input_poly_a_b()
+    if not a or not b:
+        return
+    res, rem = polynomial_division_gf2(a,b)
+    print("Resultat")
+    print_poly(res)
+    print("Rest")
+    print_poly(rem)
+    pause()
+
+def poly_add_gf2():
+    a,b = input_poly_a_b()
+    if not a or not b:
+        return
+    a,b = [a,b] if len(a) > len(b) else [b,a]
+
+    for i, x in enumerate(reversed(b)):
+        a[len(a) - i - 1] ^= x
+
+    print("Resultat")
+    print_poly(a)
+    pause()
+
+
+### AI slop begin ###
+
+def gaussian_elimination(A, b):
+    n = len(A)
+
+    # forward elimination
+    for i in range(n):
+        # pivot
+        pivot = i
+        for r in range(i + 1, n):
+            if abs(A[r][i]) > abs(A[pivot][i]):
+                pivot = r
+        A[i], A[pivot] = A[pivot], A[i]
+        b[i], b[pivot] = b[pivot], b[i]
+
+        # eliminate below
+        for r in range(i + 1, n):
+            factor = A[r][i] / A[i][i]
+            for c in range(i, n):
+                A[r][c] -= factor * A[i][c]
+            b[r] -= factor * b[i]
+
+    # back substitution
+    x = [0] * n
+    for i in range(n - 1, -1, -1):
+        s = b[i]
+        for j in range(i + 1, n):
+            s -= A[i][j] * x[j]
+        x[i] = s / A[i][i]
+
+    return x
+
+# ------------------------------------------------------------
+# degree of a polynomial (position of highest 1‑bit)
+def degree(p):
+    d = -1
+    while p:
+        d += 1
+        p >>= 1
+    return d                # -1 for the zero polynomial
+
+# ------------------------------------------------------------
+# polynomial multiplication over GF(2)
+def poly_mul(a, b):
+    res = 0
+    while b:
+        if b & 1:
+            res ^= a
+        a <<= 1
+        b >>= 1
+    return res
+
+# ------------------------------------------------------------
+# remainder a mod b (long division)
+def poly_mod(a, b):
+    db = degree(b)
+    while degree(a) >= db and a != 0:
+        shift = degree(a) - db
+        a ^= b << shift
+    return a
+
+# ------------------------------------------------------------
+# quotient a // b (used after we know b divides a)
+def poly_div(a, b):
+    q = 0
+    db = degree(b)
+    while degree(a) >= db and a != 0:
+        shift = degree(a) - db
+        q ^= 1 << shift
+        a ^= b << shift
+    return q     # remainder is zero when called correctly
+
+# ------------------------------------------------------------
+# Euclidean GCD
+def poly_gcd(a, b):
+    while b:
+        a, b = b, poly_mod(a, b)
+    return a
+
+# ------------------------------------------------------------
+# Rabin irreducibility test (tiny‑memory version)
+def is_irreducible(p):
+    n = degree(p)
+    if n <= 0:
+        return False
+    x = 2          # polynomial “x”
+    x_pow = x
+    for _ in range(1, n // 2 + 1):
+        x_pow = poly_mod(poly_mul(x_pow, x_pow), p)   # square mod p
+        if poly_gcd(x_pow ^ x, p) != 1:
+            return False
+    return True
+
+# ------------------------------------------------------------
+# Generate the next monic polynomial of a given degree.
+# start = (1 << deg) | 1   – the smallest monic with constant term 1
+def next_monic(current, deg):
+    """Return the next monic polynomial of degree `deg` after `current`,
+       or 0 when we have exhausted all possibilities."""
+    # mask for the middle bits (deg‑1 bits between the leading 1 and the trailing 1)
+    middle_mask = (1 << (deg - 1)) - 1
+    # strip the fixed leading and trailing 1 bits
+    middle = (current >> 1) & middle_mask
+    if middle == middle_mask:          # we reached the last combination
+        return 0
+    middle += 1                         # increment the middle part
+    return (1 << deg) | (middle << 1) | 1
+
+# ------------------------------------------------------------
+def factor(poly):
+    """Return a list of irreducible factors (as integers) of `poly`."""
+    if poly == 0:
+        return [0]
+
+    factors = []
+    remaining = poly
+    max_deg = degree(poly) // 2
+
+    for deg in range(1, max_deg + 1):
+        # start with the smallest monic polynomial of this degree
+        cand = (1 << deg) | 1           # 1xxxxx...x1  (middle bits = 0)
+        while cand:
+            if is_irreducible(cand):
+                # try to divide out as many times as possible
+                while poly_mod(remaining, cand) == 0:
+                    factors.append(cand)
+                    remaining = poly_div(remaining, cand)
+                    if remaining == 1:
+                        return factors
+            cand = next_monic(cand, deg)   # get the next candidate
+    # what is left (if not 1) is itself irreducible
+    if remaining != 1:
+        factors.append(remaining)
+    return factors
+
+# ------------------------------------------------------------
+def poly_to_str(p):
+    if p == 0:
+        return "0"
+    terms = []
+    i = 0
+    while p:
+        if p & 1:
+            if i == 0:
+                terms.append("1")
+            elif i == 1:
+                terms.append("x")
+            else:
+                terms.append("x^%d" % i)
+        p >>= 1
+        i += 1
+    return " + ".join(reversed(terms))
+
+def bits_to_int_msb_first(msb_first):
+    n = 0
+    for bit in msb_first:
+        n = (n << 1) | (bit & 1)   # shift left, then add the new bit
+    return n
+
+def gcd_pair(a: int, b: int) -> int:
+    """Euclidean GCD of two integers (non‑negative result)."""
+    a, b = abs(a), abs(b)
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def lcm_pair(a: int, b: int) -> int:
+    """LCM of two integers; result is 0 if either argument is 0."""
+    if a == 0 or b == 0:
+        return 0
+    return abs(a // gcd_pair(a, b) * b)   # divide first to avoid overflow
+
+
+def lcm_multi(*numbers: int) -> int:
+    """
+    Return the least common multiple of any number of integers.
+    - You may also pass a single iterable:  lcm_multi([4,6,8])
+    - An empty input yields 0 (no numbers ⇒ no common multiple).
+    """
+    # Accept a single iterable as the only argument
+    if len(numbers) == 1 and not isinstance(numbers[0], int):
+        numbers = tuple(numbers[0])
+
+    if not numbers:
+        return 0
+
+    l = 1
+    for n in numbers:
+        l = lcm_pair(l, n)
+        if l == 0:          # once a zero appears the whole LCM is zero
+            break
+    return l
+
+### AI slop end ###
+
+def poly_cycle():
+    poly = input_poly()
+    if not poly:
+        print("\nUngültiges Polynom (leer).")
+        pause()
+        return
+    nr = bits_to_int_msb_first(poly)
+    
+    res = lcm_multi(2 ** degree(f) - 1 for f in factor(nr))
+
+    print("Resultat: " + str(res))
+    pause()
+
+def poly_factor():
+    poly = input_poly()
+    if not poly:
+        print("\nUngültiges Polynom (leer).")
+        pause()
+        return
+    nr = bits_to_int_msb_first(poly)
+    print("Resultat")
+    print(" * ".join("("+poly_to_str(f)+")" for f in factor(nr)))
+    pause()
 
 def polynomial_menu():
     global current_menu
@@ -1616,20 +1936,27 @@ def polynomial_menu():
 
     while current_menu == "polynomial":
         clear_screen()
-        print("==== Polynomprüfung ====")
+        print("==== Polynomrechnung/-prüfung ====")
         print("1. Prüfen ob Polynom reduzibel/irreduzibel ist")
         print("2. Prüfen ob Polynom primitiv ist")
         print("3. Elemente des Erweiterungsfelds generieren")
+        print("4. Addition in GF(2)")
+        print("5. Multiplikation in GF(2)")
+        print("6. Division in GF(2)")
+        print("7. Zykluslänge bestimmen")
+        print("8. Polynom faktorisieren")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Irreduzibilitätsprüfung
             clear_screen()
             print("==== Polynom auf Irreduzibilität prüfen ====")
             try:
-                poly_str = input("Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                print("Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                poly_str = input("> ")
+
                 poly = [int(bit) for bit in poly_str]
 
                 # Entferne führende Nullen
@@ -1652,17 +1979,17 @@ def polynomial_menu():
                             elif power == 1:
                                 poly_terms.append("x")
                             else:
-                                poly_terms.append(f"x^{power}")
+                                poly_terms.append("x^{}".format(power))
 
                     poly_notation = " + ".join(poly_terms)
 
-                    print(f"\nPolynom: {poly_notation}")
+                    print("\nPolynom: {}".format(poly_notation))
                     if result:
                         print("Das Polynom ist irreduzibel.")
                     else:
                         print("Das Polynom ist reduzibel (faktorisierbar).")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1671,7 +1998,8 @@ def polynomial_menu():
             print("==== Polynom auf Primitivität prüfen ====")
             print("Hinweis: Diese Berechnung kann für Polynome mit Grad > 4 sehr lange dauern.")
             try:
-                poly_str = input("Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                print("Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                poly_str = input("> ")
                 poly = [int(bit) for bit in poly_str]
 
                 # Entferne führende Nullen
@@ -1685,7 +2013,7 @@ def polynomial_menu():
 
                     if degree > 4:
                         confirm = input(
-                            f"Das Polynom hat Grad {degree}, was eine lange Berechnung erfordert. Fortfahren? (j/n): ")
+                            "Das Polynom hat Grad {}, was eine lange Berechnung erfordert. Fortfahren? (j/n): ".format(degree))
                         if confirm.lower() != 'j':
                             raise Exception("Berechnung abgebrochen")
 
@@ -1701,17 +2029,17 @@ def polynomial_menu():
                             elif power == 1:
                                 poly_terms.append("x")
                             else:
-                                poly_terms.append(f"x^{power}")
+                                poly_terms.append("x^{}".format(power))
 
                     poly_notation = " + ".join(poly_terms)
 
-                    print(f"\nPolynom: {poly_notation}")
+                    print("\nPolynom: {}".format(poly_notation))
                     if result:
                         print("Das Polynom ist primitiv.")
                     else:
                         print("Das Polynom ist NICHT primitiv.")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -1720,7 +2048,8 @@ def polynomial_menu():
             print("==== Erweiterungsfeld-Elemente generieren ====")
             print("Hinweis: Diese Funktion ist für Felder mit Grad ≤ 4 optimiert.")
             try:
-                poly_str = input("Primitives Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                print("Primitives Polynom (höchste Potenz zuerst, z.B. 1101 für x³+x²+1): ")
+                poly_str = input("> ")
                 poly = [int(bit) for bit in poly_str]
 
                 # Entferne führende Nullen
@@ -1735,14 +2064,14 @@ def polynomial_menu():
 
                     if degree > 4:
                         confirm = input(
-                            f"Das Polynom erzeugt ein Feld GF(2^{degree}) mit {max_elements} Elementen. Anzahl der anzuzeigenden Elemente eingeben (max {max_elements}): ")
+                            "Das Polynom erzeugt ein Feld GF(2^{}) mit {} Elementen. Anzahl der anzuzeigenden Elemente eingeben (max {}): ".format(degree,max_elements,max_elements))
                         limit = int(confirm) if confirm else max_elements
                     else:
                         limit = max_elements
 
                     elements = generate_extension_field_elements(poly, min(limit, max_elements))
 
-                    print(f"\nElemente des Erweiterungsfelds GF(2^{degree}):")
+                    print("\nElemente des Erweiterungsfelds GF(2^{}):".format(degree))
                     for i, element in enumerate(elements):
                         # Binärdarstellung
                         bin_repr = ''.join(str(bit) for bit in element)
@@ -1757,7 +2086,7 @@ def polynomial_menu():
                                 elif power == 1:
                                     poly_terms.append("x")
                                 else:
-                                    poly_terms.append(f"x^{power}")
+                                    poly_terms.append("x^{}".format(power))
 
                         poly_repr = " + ".join(poly_terms) if poly_terms else "0"
 
@@ -1765,12 +2094,27 @@ def polynomial_menu():
                         if i == 0:
                             alpha_repr = "1"
                         else:
-                            alpha_repr = f"α^{i}"
+                            alpha_repr = "α^{}".format(i)
 
-                        print(f"{alpha_repr:>6} = {poly_repr:>12} = {bin_repr}")
+                        print("{:>6} = {:>12} = {}".format(alpha_repr,poly_repr,bin_repr))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
+
+        elif choice == "4":
+            poly_add_gf2()
+
+        elif choice == "5":
+            poly_mul_gf2()
+
+        elif choice == "6":
+            poly_div_gf2()
+
+        elif choice == "7":
+            poly_cycle()
+
+        elif choice == "8":
+            poly_factor()
 
         elif choice == "0":
             current_menu = "main"
@@ -1875,12 +2219,46 @@ def entropy_with_memory(transition_matrix):
         if p > 0:
             h_stationary -= p * math.log2(p)
 
-    return {
+    # assuming that the matrix is quadratic without checking, my exam is in an
+    # hour so i don't have any time left for error handling
+    print(transition_matrix)
+    mat = [[] for row in transition_matrix]
+    for i, row in enumerate(transition_matrix):
+        for j, x in enumerate(row):
+            mat[i].append(1 - x if i == j else - x)
+    mat[0] = [1 for i in range(len(mat[0]))]
+    print(mat)
+    b = [0 for i in range(len(mat))]
+    b[0] = 1
+    probs = [x for x in gaussian_elimination(mat, b)]
+    print(probs)
+    matT = [[] for x in transition_matrix]
+    for row in transition_matrix:
+        for j, x in enumerate(row):
+            matT[j].append(x)
+    joint_probs = []
+    for i, x in enumerate(probs):
+        joint_probs.append([xy * x for xy in matT[i]])
+    info = [-math.log2(x) for x in probs]
+    pinfo = [-math.log2(x) * x for x in probs]
+    entropy = sum(pinfo)
+    entropy_assoc = -sum([sum(math.log2(x) * x for x in row) for row in joint_probs])
+    entropy_cond = entropy_assoc - entropy
+    
+    res = {
+        "probs": probs,
+        "joint_probs": joint_probs,
+        "info": info,
+        "pinfo": pinfo,
+        "entropy": entropy,
+        "entropy_assoc": entropy_assoc,
+        "entropy_cond": entropy_cond,
         "stationary_distribution": pi,
         "conditional_entropy": h_cond,
         "stationary_entropy": h_stationary,
         "entropy_rate": h_cond
     }
+    return res
 
 
 #####################
@@ -1899,7 +2277,7 @@ def markov_menu():
         print("3. Entropie für Quellen mit Gedächtnis")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Verbundwahrscheinlichkeiten
@@ -1912,16 +2290,16 @@ def markov_menu():
                 print("\nP(X) Wahrscheinlichkeiten:")
                 px = []
                 for i in range(n_x):
-                    p = float(input(f"P(X={i + 1}): "))
+                    p = float(input("P(X={}): ".format(i + 1)))
                     px.append(p)
 
                 print("\nBedingte Wahrscheinlichkeiten P(Y|X):")
                 pyx = []
                 for i in range(n_x):
-                    print(f"Für X={i + 1}:")
+                    print("Für X={}:".format(i + 1))
                     row = []
                     for j in range(n_y):
-                        p = float(input(f"P(Y={j + 1}|X={i + 1}): "))
+                        p = float(input("P(Y={}|X={}): ".format(j + 1,i + 1)))
                         row.append(p)
                     pyx.append(row)
 
@@ -1934,13 +2312,13 @@ def markov_menu():
                 print("\nVerbundwahrscheinlichkeiten P(X,Y):")
                 for i in range(n_x):
                     for j in range(n_y):
-                        print(f"P(X={i + 1},Y={j + 1}) = {pxy[i][j]:.6f}")
+                        print("P(X={},Y={}) = {:.6f}".format(i + 1,j + 1,pxy[i][j]))
 
                 print("\nRandwahrscheinlichkeiten P(Y):")
                 for j in range(n_y):
-                    print(f"P(Y={j + 1}) = {py[j]:.6f}")
+                    print("P(Y={}) = {:.6f}".format(j + 1,py[j]))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -1954,25 +2332,25 @@ def markov_menu():
                 print("\nP(X) Wahrscheinlichkeiten:")
                 px = []
                 for i in range(n_x):
-                    p = float(input(f"P(X={i + 1}): "))
+                    p = float(input("P(X={}): ".format(i + 1)))
                     px.append(p)
 
                 print("\nVerbundwahrscheinlichkeiten P(X,Y):")
                 pxy = []
                 for i in range(n_x):
-                    print(f"Für X={i + 1}:")
+                    print("Für X={}:".format(i + 1))
                     row = []
                     for j in range(n_y):
-                        p = float(input(f"P(X={i + 1},Y={j + 1}): "))
+                        p = float(input("P(X={},Y={}): ".format(i + 1,j + 1)))
                         row.append(p)
                     pxy.append(row)
 
                 # Berechne bedingte Entropie
                 h_yx = conditional_entropy_yx(pxy, px)
 
-                print(f"\nBedingte Entropie H(Y|X) = {h_yx:.6f} bits")
+                print("\nBedingte Entropie H(Y|X) = {:.6f} bits".format(h_yx))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -1985,10 +2363,10 @@ def markov_menu():
                 print("\nÜbergangsmatrix eingeben:")
                 transition_matrix = []
                 for i in range(n):
-                    print(f"Für Zustand {i + 1}:")
+                    print("Für Zustand {}:".format(i + 1))
                     row = []
                     for j in range(n):
-                        p = float(input(f"P(Zustand {j + 1}|Zustand {i + 1}): "))
+                        p = float(input("P(Zustand {}|Zustand {}): ".format(j + 1,i + 1)))
                         row.append(p)
                     transition_matrix.append(row)
 
@@ -1998,13 +2376,20 @@ def markov_menu():
                 print("\nErgebnisse:")
                 print("Stationäre Verteilung:")
                 for i, p in enumerate(result["stationary_distribution"]):
-                    print(f"π_{i + 1} = {p:.6f}")
+                    print("π_{} = {:.6f}".format(i + 1,p))
 
-                print(f"\nStationäre Entropie H(X) = {result['stationary_entropy']:.6f} bits")
-                print(f"Bedingte Entropie H(X_t+1|X_t) = {result['conditional_entropy']:.6f} bits")
-                print(f"Entropierate = {result['entropy_rate']:.6f} bits pro Symbol")
+                print("\nStationäre Entropie H(X) = {:.6f} bits".format(result['stationary_entropy']))
+                print("Bedingte Entropie H(X_t+1|X_t) = {:.6f} bits".format(result['conditional_entropy']))
+                print("Entropierate = {:.6f} bits pro Symbol".format(result['entropy_rate']))
+
+                print(' '.join(["P(x{}) = {}".format(i+1, round(p,3)) for i, p in enumerate(result["probs"])]))
+                for i, r in enumerate(result["joint_probs"]):
+                    print(' '.join(["P(x{},y{}) = {}".format(i+1, j + 1, round(p,3)) for j,p in enumerate(r)]))
+                print(' '.join(["I(x{}) = {}".format(i+1, round(p,3)) for i, p in enumerate(result["info"])]))
+                print(' '.join(["P(x{})I(x{}) = {}".format(i+1,i+1, round(p,3)) for i, p in enumerate(result["pinfo"])]))
+                print("H(X) = {} H(X,Y) = {} H(Y|X) = {}".format( round(result["entropy"],3),round(result["entropy_assoc"],3),round(result["entropy_cond"],3)))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -2072,7 +2457,7 @@ def create_hamming_parity_matrix(r):
     for j in range(n):
         # j+1 als r-bit Binärdarstellung
         col_idx = j + 1
-        binary = bin(col_idx)[2:].zfill(r)
+        binary = zfl(bin(col_idx)[2:],r)
         binary = binary[-r:]  # Nimm nur die letzten r Bits
 
         for i in range(r):
@@ -2177,7 +2562,7 @@ def generate_all_polynomials(degree):
     # 2^degree mögliche Kombinationen
     for i in range(2 ** degree):
         # Konvertiere i in Binärdarstellung
-        binary = bin(i)[2:].zfill(degree)
+        binary = zfl(bin(i)[2:],degree)
         coeffs = [int(bit) for bit in binary]
         result.append(coeffs)
 
@@ -2338,7 +2723,7 @@ def blockcode_menu():
         print("2. Hamming-Prüfmatrix generieren")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Dichtgepackt prüfen
@@ -2352,9 +2737,9 @@ def blockcode_menu():
                 result = is_densely_packed(n, k, d)
 
                 if result:
-                    print(f"\nDer ({n},{k},{d})-Code ist dichtgepackt!")
+                    print("\nDer ({},{},{})-Code ist dichtgepackt!".format(n,k,d))
                 else:
-                    print(f"\nDer ({n},{k},{d})-Code ist NICHT dichtgepackt.")
+                    print("\nDer ({},{},{})-Code ist NICHT dichtgepackt.".format(n,k,d))
 
                 # Zeige Berechnungsdetails
                 num_codewords = 2 ** k
@@ -2367,13 +2752,13 @@ def blockcode_menu():
                 total_words = 2 ** n
                 packed_size = num_codewords * sphere_size
 
-                print(f"\nAnzahl der Codewörter: 2^{k} = {num_codewords}")
-                print(f"Korrigierbare Fehler: t = ({d}-1)/2 = {t}")
-                print(f"Größe der Korrekturkugel: {sphere_size}")
-                print(f"Anzahl aller Wörter: 2^{n} = {total_words}")
-                print(f"Codewörter * Kugel: {num_codewords} * {sphere_size} = {packed_size}")
+                print("\nAnzahl der Codewörter: 2^{} = {}".format(k,num_codewords))
+                print("Korrigierbare Fehler: t = ({}-1)/2 = {}".format(d,t))
+                print("Größe der Korrekturkugel: {}".format(sphere_size))
+                print("Anzahl aller Wörter: 2^{} = {}".format(n,total_words))
+                print("Codewörter * Kugel: {} * {} = {}".format(num_codewords,sphere_size,packed_size))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -2386,11 +2771,11 @@ def blockcode_menu():
                 H = create_hamming_parity_matrix(r)
                 n = 2 ** r - 1
 
-                print(f"\nPrüfmatrix für ({n},{n - r},{3})-Hamming-Code:")
+                print("\nPrüfmatrix für ({},{},{})-Hamming-Code:".format(n,n-r,3))
                 for i in range(r):
                     print(' '.join(str(bit) for bit in H[i]))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -2444,7 +2829,7 @@ def create_channel_matrix(type="binary_symmetric", error_prob=0.1, n_inputs=2, n
         return [[0] * n_outputs for _ in range(n_inputs)]
 
     else:
-        raise ValueError(f"Unbekannter Kanaltyp: {type}")
+        raise ValueError("Unbekannter Kanaltyp: {}".format(type))
 
 
 def channel_simulate(input_symbols, channel_matrix, iterations=1000):
@@ -2918,7 +3303,7 @@ def advanced_channel_menu():
         print("5. Kanalkapazität berechnen")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Kanalmatrix erstellen
@@ -2931,7 +3316,7 @@ def advanced_channel_menu():
                 print("3. Binärer symmetrischer Kanal (BSC)")
                 print("4. Benutzerdefiniert")
 
-                type_choice = input("\nWähle einen Typ: ")
+                type_choice = input("Wähle einen Typ: ")
 
                 channel_type = ""
                 if type_choice == "1":
@@ -2960,16 +3345,16 @@ def advanced_channel_menu():
 
                 print("\nErzeugte Kanalmatrix P(Y|X):")
                 for i, row in enumerate(matrix):
-                    print(f"x{i}: {' '.join(f'{p:.4f}' for p in row)}")
+                    print("x{}: {}".format(i,' '.join('{:.4f}'.format(p) for p in row)))
 
                 # Optional: Matrix in Variable speichern
-                save = input("\nMatrix speichern? (j/n): ")
+                save = input("Matrix speichern? (j/n): ")
                 if save.lower() == "j":
-                    global saved_channel_matrix
-                    saved_channel_matrix = matrix
+                    # global saved_channel_matrix
+                    # saved_channel_matrix = matrix
                     print("Matrix gespeichert!")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -2998,17 +3383,17 @@ def advanced_channel_menu():
                 results = channel_simulate(input_symbols, matrix, iterations)
 
                 print("\nSimulationsergebnisse:")
-                print(f"Fehlerrate: {results['error_rate']:.6f}")
+                print("Fehlerrate: {:.6f}".format(results['error_rate']))
 
                 print("\nAusgabewahrscheinlichkeiten P(Y):")
                 for j, p in enumerate(results['output_probs']):
-                    print(f"P(Y={j}) = {p:.6f}")
+                    print("P(Y={}) = {:.6f}".format(j,p))
 
                 print("\nGemessene bedingte Wahrscheinlichkeiten P(Y|X):")
                 for i, row in enumerate(results['conditional_probs']):
-                    print(f"x{i}: {' '.join(f'{p:.4f}' for p in row)}")
+                    print("x{}: {}".format(i,' '.join('{:.4f}'.format(p) for p in row)))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -3028,20 +3413,21 @@ def advanced_channel_menu():
 
                 # A-priori-Wahrscheinlichkeiten
                 n_inputs = len(matrix)
-                prior_str = input(f"A-priori-Wahrscheinlichkeiten P(X) für {n_inputs} Symbole (z.B. 0.5,0.5): ")
+                print("A-priori-Wahrscheinlichkeiten P(X) für {} Symbole (z.B. 0.5,0.5): ".format(n_inputs))
+                input("> ")
                 prior_probs = [float(p.strip()) for p in prior_str.split(",")]
 
                 if len(prior_probs) != n_inputs:
-                    raise ValueError(f"Anzahl der Wahrscheinlichkeiten muss {n_inputs} sein")
+                    raise ValueError("Anzahl der Wahrscheinlichkeiten muss {} sein".format(n_inputs))
 
                 # MAP-Entscheider berechnen
                 decoder = maximum_a_posteriori_decoder(matrix, prior_probs)
 
                 print("\nMAP-Entscheidungstabelle:")
                 for j, decision in enumerate(decoder):
-                    print(f"Wenn y{j} empfangen: Entscheide x{decision}")
+                    print("Wenn y{} empfangen: Entscheide x{}".format(j,decision))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -3061,26 +3447,28 @@ def advanced_channel_menu():
 
                 # A-priori-Wahrscheinlichkeiten
                 n_inputs = len(matrix)
-                prior_str = input(f"A-priori-Wahrscheinlichkeiten P(X) für {n_inputs} Symbole (z.B. 0.5,0.5): ")
+                print("A-priori-Wahrscheinlichkeiten P(X) für {} Symbole (z.B. 0.5,0.5): ".format(n_inputs))
+                prior_str = input("> ")
                 prior_probs = [float(p.strip()) for p in prior_str.split(",")]
 
                 if len(prior_probs) != n_inputs:
-                    raise ValueError(f"Anzahl der Wahrscheinlichkeiten muss {n_inputs} sein")
+                    raise ValueError("Anzahl der Wahrscheinlichkeiten muss {} sein".format(n_inputs))
 
                 # Kostenmatrix
-                use_cost = input("Kostenmatrix verwenden? (j/n, Standard: 0-1-Kosten): ")
+                print("Kostenmatrix verwenden? (j/n, Standard: 0-1-Kosten): ")
+                use_cost = input("> ")
                 cost_matrix = None
 
                 if use_cost.lower() == "j":
                     cost_matrix = []
-                    print(f"\nKostenmatrix C[i][i_hat] eingeben ({n_inputs}x{n_inputs}):")
+                    print("\nKostenmatrix C[i][i_hat] eingeben ({}x{}):".format(n_inputs,n_inputs))
                     for i in range(n_inputs):
                         cost_row = []
-                        row_str = input(f"Zeile {i} (z.B. 0,1,2,...): ")
+                        row_str = input("Zeile {} (z.B. 0,1,2,...): ".format(i))
                         cost_row = [float(c.strip()) for c in row_str.split(",")]
 
                         if len(cost_row) != n_inputs:
-                            raise ValueError(f"Zeile muss {n_inputs} Werte enthalten")
+                            raise ValueError("Zeile muss {} Werte enthalten".format(n_inputs))
 
                         cost_matrix.append(cost_row)
 
@@ -3089,9 +3477,9 @@ def advanced_channel_menu():
 
                 print("\nMinimum-Fehler-Entscheidungstabelle:")
                 for j, decision in enumerate(decoder):
-                    print(f"Wenn y{j} empfangen: Entscheide x{decision}")
+                    print("Wenn y{} empfangen: Entscheide x{}".format(j,decision))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "5":
@@ -3112,11 +3500,11 @@ def advanced_channel_menu():
                 # Kanalkapazität berechnen
                 capacity = channel_capacity(matrix)
 
-                print(f"\nKanalkapazität: {capacity:.6f} bits pro Übertragung")
+                print("\nKanalkapazität: {:.6f} bits pro Übertragung".format(capacity))
                 print("\nHinweis: Dies ist eine Approximation der Kanalkapazität basierend")
                 print("auf gleichwahrscheinlichen Eingangssymbolen und könnte nicht optimal sein.")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -3137,7 +3525,7 @@ def probability_menu():
         print("5. Binomialwahrscheinlichkeit (kumulativ)")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Bedingte Wahrscheinlichkeit
@@ -3148,9 +3536,9 @@ def probability_menu():
                 marginal_prob = float(input("Randwahrscheinlichkeit P(B): "))
 
                 result = conditional_probability(joint_prob, marginal_prob)
-                print(f"\nBedingte Wahrscheinlichkeit P(A|B) = {result:.6f}")
+                print("\nBedingte Wahrscheinlichkeit P(A|B) = {:.6f}".format(result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -3163,10 +3551,10 @@ def probability_menu():
                 evidence = float(input("Evidenz P(B): "))
 
                 result = bayes_theorem(prior, likelihood, evidence)
-                print(f"\nA-posteriori-Wahrscheinlichkeit P(A|B) = {result:.6f}")
-                print(f"Formel: P(A|B) = P(B|A) * P(A) / P(B) = {likelihood} * {prior} / {evidence}")
+                print("\nA-posteriori-Wahrscheinlichkeit P(A|B) = {:.6f}".format(result))
+                print("Formel: P(A|B) = P(B|A) * P(A) / P(B) = {} * {} / {}".format(likelihood,prior,evidence))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -3181,17 +3569,17 @@ def probability_menu():
 
                 print("\nGib die Wahrscheinlichkeiten ein:")
                 for i in range(n):
-                    p = float(input(f"P(A{i + 1}): "))
-                    c = float(input(f"P(B|A{i + 1}): "))
+                    p = float(input("P(A{}): ".format(i + 1)))
+                    c = float(input("P(B|A{}): ".format(i + 1)))
                     priors.append(p)
                     conditionals.append(c)
 
                 result = total_probability(priors, conditionals)
 
-                print(f"\nGesamtwahrscheinlichkeit P(B) = {result:.6f}")
+                print("\nGesamtwahrscheinlichkeit P(B) = {:.6f}".format(result))
                 print("Formel: P(B) = Σ P(B|Ai) * P(Ai)")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -3207,10 +3595,10 @@ def probability_menu():
                     raise ValueError("p muss zwischen 0 und 1 liegen")
 
                 result = bernoulli_probability(p, k, n)
-                print(f"\nP(X = {k}) = {result:.6f}")
-                print(f"Formel: P(X = {k}) = C({n},{k}) * {p}^{k} * (1-{p})^{n - k}")
+                print("\nP(X = {}) = {:.6f}".format(k,result))
+                print("Formel: P(X = {}) = C({},{}) * {}^{} * (1-{})^{}".format(k,n,k,p,k,p,n - k))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "5":
@@ -3226,10 +3614,10 @@ def probability_menu():
                     raise ValueError("p muss zwischen 0 und 1 liegen")
 
                 result = binomial_cumulative(p, k, n)
-                print(f"\nP(X ≤ {k}) = {result:.6f}")
-                print(f"Formel: P(X ≤ {k}) = Σ P(X = i) für i von 0 bis {k}")
+                print("\nP(X ≤ {}) = {:.6f}".format(k,result))
+                print("Formel: P(X ≤ {}) = Σ P(X = i) für i von 0 bis {}".format(k,k))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -3252,7 +3640,7 @@ def combinatorics_menu():
         print("7. Bell-Zahl")
         print("0. Zurück zum Hauptmenü")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             # Permutation
@@ -3265,13 +3653,13 @@ def combinatorics_menu():
                 if k_input:
                     k = int(k_input)
                     result = permutation(n, k)
-                    print(f"\nP({n},{k}) = {result}")
-                    print(f"Formel: P({n},{k}) = {n}! / ({n}-{k})!")
+                    print("\nP({},{}) = {}".format(n,k,result))
+                    print("Formel: P({},{}) = {}! / ({}-{})!".format(n,k,n,n,k))
                 else:
                     result = permutation(n)
-                    print(f"\n{n}! = {result}")
+                    print("\n{}! = {}".format(n,result))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "2":
@@ -3287,14 +3675,14 @@ def combinatorics_menu():
 
                 result = permutation_with_repetition(n, counts)
 
-                print(f"\nAnzahl der Permutationen: {result}")
-                formula = f"{n}! / ({counts[0]}!"
+                print("\nAnzahl der Permutationen: {}".format(result))
+                formula = "{}! / ({}!".format(n,counts[0])
                 for count in counts[1:]:
-                    formula += f" * {count}!"
+                    formula += " * {}!".format(count)
                 formula += ")"
-                print(f"Formel: {formula}")
+                print("Formel: {}".format(formula))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "3":
@@ -3307,10 +3695,10 @@ def combinatorics_menu():
 
                 result = combination(n, k)
 
-                print(f"\nC({n},{k}) = {result}")
-                print(f"Formel: C({n},{k}) = {n}! / ({k}! * ({n}-{k})!)")
+                print("\nC({},{}) = {}".format(n,k,result))
+                print("Formel: C({},{}) = {}! / ({}! * ({}-{})!)".format(n,k,n,k,n,k))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "4":
@@ -3323,10 +3711,10 @@ def combinatorics_menu():
 
                 result = combination_with_repetition(n, k)
 
-                print(f"\nC'({n},{k}) = {result}")
-                print(f"Formel: C'({n},{k}) = C({n}+{k}-1,{k}) = ({n}+{k}-1)! / ({k}! * ({n}-1)!)")
+                print("\nC'({},{}) = {}".format(n,k,result))
+                print("Formel: C'({},{}) = C({}+{}-1,{}) = ({}+{}-1)! / ({}! * ({}-1)!)".format(n,k,n,k,k,n,k,k,n))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "5":
@@ -3342,14 +3730,14 @@ def combinatorics_menu():
 
                 result = multinomial(n, counts)
 
-                print(f"\nMultinomialkoeffizient: {result}")
-                formula = f"{n}! / ({counts[0]}!"
+                print("\nMultinomialkoeffizient: {}".format(result))
+                formula = "{}! / ({}!".format(n,counts[0])
                 for count in counts[1:]:
-                    formula += f" * {count}!"
+                    formula += " * {}!".format(count)
                 formula += ")"
-                print(f"Formel: {formula}")
+                print("Formel: {}".format(formula))
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "6":
@@ -3368,10 +3756,10 @@ def combinatorics_menu():
 
                 result = stirling_number_2nd_kind(n, k)
 
-                print(f"\nStirling-Zahl S({n},{k}) = {result}")
+                print("\nStirling-Zahl S({},{}) = {}".format(n,k,result))
                 print("Formel: S(n,k) = k*S(n-1,k) + S(n-1,k-1)")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "7":
@@ -3389,10 +3777,10 @@ def combinatorics_menu():
 
                 result = bell_number(n)
 
-                print(f"\nBell-Zahl B({n}) = {result}")
+                print("\nBell-Zahl B({}) = {}".format(n, result))
                 print("Formel: B(n) = Σ S(n,k) für k von 1 bis n")
             except Exception as e:
-                print(f"Fehler: {str(e)}")
+                print("Fehler: {}".format(str(e)))
             pause()
 
         elif choice == "0":
@@ -3406,22 +3794,18 @@ def main_menu():
     while True:
         clear_screen()
         print("==== ICTh Prüfungstool ====")
-        print("1. Entropie und Kompression")
-        print("2. RSA Verschlüsselung")
-        print("3. Kanalcodierung")
-        print("4. Faltungscodes")
-        print("5. Kanalmodell")
-        print("6. Binärzahlen und Darstellung")
+        print("1. Entropie/Kompression 2. RSA")
+        print("3. Kanalcodierung       4. Faltungscodes")
+        print("5. Kanalmodell          6. Binärzahlen")
         print("7. Zyklische Codes")
         print("8. Markov-Quellen und Gedächtnis")
         print("9. Blockcode-Eigenschaften")
-        print("10. Polynomprüfung")
-        print("11. Erweiterte Kanalmodelle")  # Neue Option
-        print("12. Wahrscheinlichkeitsberechnungen")  # Neue Option
-        print("13. Kombinatorik")  # Neue Option
-        print("0. Beenden")
+        print("10. Polynomrechnung/-prüfung")
+        print("11. Erweiterte Kanalmodelle")
+        print("12. Wahrscheinlichkeitsberechnungen")
+        print("13. Kombinatorik")
 
-        choice = input("\nWähle eine Option: ")
+        choice = input("Wähle eine Option: ")
 
         if choice == "1":
             entropie_menu()
@@ -3449,7 +3833,7 @@ def main_menu():
             probability_menu()  # Neues Menü
         elif choice == "13":
             combinatorics_menu()  # Neues Menü
-        elif choice == "0":
+        elif choice in ["0", "q", ""]:
             print("Beenden des Programms...")
             break
         else:
@@ -3458,3 +3842,9 @@ def main_menu():
 
 if __name__ == "__main__":
     main_menu()
+
+class ICTH(Tool):
+    """ICTH tool"""
+    def run(self) -> None:
+        """Low-effort port of the icth scripts"""
+        main_menu()

@@ -232,7 +232,7 @@ class ViterbiDecodeTool(Tool):
             print("Trellis-Übergänge: (vorheriger Zustand, Ausgabe, nächster Zustand)")
             print("(0, 00, 0), (0, 11, 1), (1, 10, 0), (1, 01, 1)")
 
-            received_bits = input("\nEmpfangene Bits: ")
+            received_bits = input("Empfangene Bits: ")
             if not all(bit in '01' for bit in received_bits):
                 print("Fehler: Die empfangenen Bits müssen binär sein (nur 0 und 1 enthalten)")
                 print("\nDrücke Enter, um fortzufahren...")

@@ -425,7 +425,7 @@ class RSA(Tool):
             print("    Berechnetes/Verschlüsseltes c = {}".format(calculated_c))
         elif calculated_c is not None and original_c is None:
             print("    Verschlüsseltes c = {}".format(calculated_c))
-        input("\nDrücke Enter zum Fortfahren...")
+        input("Drücke Enter zum Fortfahren...")
 
         return {
             'p': calculated_p, 'q': calculated_q, 'n': calculated_n, 'phi': calculated_phi,
@@ -553,7 +553,7 @@ class RSA(Tool):
                     print("Ungültige Eingabe. Bitte Zahlen eingeben.")
                 except Exception as e_inner:
                     print("Fehler im Euklid. Alg.: {}".format(e_inner))
-                input("\nDrücke Enter zum Fortfahren...")
+                input("Drücke Enter zum Fortfahren...")
             elif choice == "3":
                 try:
                     base = int(input("Modulare Exponentiation - Basis: "))
@@ -564,7 +564,7 @@ class RSA(Tool):
                     print("Ungültige Eingabe. Bitte Zahlen eingeben.")
                 except Exception as e_inner:
                     print("Fehler in mod. Exp.: {}".format(e_inner))
-                input("\nDrücke Enter zum Fortfahren...")
+                input("Drücke Enter zum Fortfahren...")
             elif choice == "4":
                 try:
                     n = int(input("n für phi(n) eingeben: "))
@@ -579,4 +579,4 @@ class RSA(Tool):
                 break # Verlässt die while-Schleife dieser Methode
             else:
                 print("Ungültige Auswahl.")
-                input("\nDrücke Enter zum Fortfahren...")
+                input("Drücke Enter zum Fortfahren...")

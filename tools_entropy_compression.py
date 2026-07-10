@@ -1,4 +1,5 @@
 from tool_base import *
+from tools_binary_conversion import to_n_bits
 import math
 
 
@@ -158,7 +159,7 @@ class RLETool(Tool):
             if choice == 3:
                 print("Beendet.")
                 break
-            elif choice not in [1, 2]:
+            if choice not in [1, 2]:
                 print("Nur 1, 2 oder 3 erlaubt.")
                 continue
 
@@ -176,36 +177,64 @@ class RLETool(Tool):
                     continue
 
             encoded, n_units = self.rle_encode(s)
-            print("Eingabe:")
-            print(s)
+            print("Eingabe:", s)
 
-            print("Lauflängenkodiert:")
             output_str = ""
             for sym, cnt in encoded:
                 if cnt == 1:
                     output_str += sym
                 else:
                     output_str += sym + str(cnt)
-            print(output_str)
+            print("Lauflängenkodiert:", output_str)
+
+            output_bin = encoded[0][0]
+            bitsize = math.log2(max(cnt for (_, cnt) in encoded)) + 1
+            for _, cnt in encoded:
+                output_bin += " " + to_n_bits(bitsize,cnt)
+            print("Binär:", output_bin)
 
             original_len = len(s)
             encoded_len = len(output_str)
             rate = round(encoded_len / original_len, 5)
-            print("Kompressionsrate:", rate)
+            encoded_len_bin = len(output_bin.replace(" ", ""))
+            rate_bin = round(encoded_len_bin / len(s.replace(" ","")), 5)
             print("Original:", original_len, "Einheiten")
-            print("Kodiert:", encoded_len, "Einheiten")
+            print("Kodiert:", encoded_len, " Binär: ", encoded_len_bin, "Einheiten")
+            print("Kompressionsrate:", rate, " Binär: ", rate_bin)
 
             decoded = self.rle_decode(encoded)
-            print("Überprüfung:", end=' ')
-            if decoded == s:
-                print("Dekodierung stimmt mit Original überein.")
-            else:
-                print("Fehler in der Dekodierung!")
+            if decoded != s:
+                print("Überprüfung: Fehler in der Dekodierung!")
 
             print("Drücke Enter zum Fortfahren...")
             input()  # Wartet auf Enter
 
 class LZW(Tool):
+
+    def show_encoding_steps(self, data, initial_dict):
+        """
+        Zeigt detaillierte Kodierungsschritte (auf Anfrage)
+        """
+        print("\n=== KODIERUNGSSCHRITTE ===")
+
+        # Zeige Startwörterbuch
+        print("Start-Wörterbuch:")
+        for key, value in sorted(initial_dict.items(), key=lambda x: x[1]):
+            print("  {}: '{}'".format(value, key))
+
+        print("\nSchritte:")
+
+        result, dictionary, steps, c = self.lzw_encode(data, initial_dict)
+
+        for step in steps:
+            if len(step) == 5:
+                print("{}. '{}' -> {} | Neu: {}='{}'".format(*step))
+            else:
+                print("{}. '{}' -> {}".format(*step))
+
+        print("\nErgebnis: {}".format(' '.join(map(str, result))))
+        print("Kompression: {}".format(c))
+        return result
 
     def lzw_encode(self, data, initial_dict=None):
         """
@@ -226,31 +255,40 @@ class LZW(Tool):
             raise ValueError("initial_dict muss None, Liste oder Dictionary sein")
 
         result = []
+        steps = []
         current_string = ""
+        step = 1
 
         for char in data:
-            # Versuche die Zeichenfolge zu erweitern
             new_string = current_string + char
 
             if new_string in dictionary:
-                # Zeichenfolge ist im Wörterbuch, erweitere weiter
                 current_string = new_string
+                index = dictionary[current_string]
             else:
-                # Zeichenfolge nicht im Wörterbuch
-                # Gib Index der aktuellen Zeichenfolge aus
-                result.append(dictionary[current_string])
+                # Ausgabe für aktuellen Schritt
+                if current_string:
+                    index = dictionary[current_string]
+                    result.append(index)
+                    next_index = len(dictionary)
 
-                # Füge neue Zeichenfolge zum Wörterbuch hinzu
-                dictionary[new_string] = len(dictionary)
+                    steps.append((step, current_string, index, next_index,
+                                  new_string))
 
-                # Beginne mit dem aktuellen Zeichen
+                    dictionary[new_string] = next_index
+                    step += 1
+
                 current_string = char
 
-        # Gib den Index der letzten Zeichenfolge aus
+        # Letzter Schritt
         if current_string:
-            result.append(dictionary[current_string])
+            index = dictionary[current_string]
+            result.append(index)
+            steps.append((step, current_string, index))
 
-        return result, dictionary
+        compression = round(len(result) / len(data), 5)
+
+        return result, dictionary, steps, compression
 
     def lzw_decode(self, encoded_data, initial_dict=None):
         """
@@ -302,67 +340,14 @@ class LZW(Tool):
         Kompakte LZW-Kodierung - zeigt nur das Ergebnis
         """
         try:
-            result, dictionary = self.lzw_encode(data, initial_dict)
+            result, dictionary, _, c = self.lzw_encode(data, initial_dict)
             print("Eingabe: {}".format(data))
             print("Kodiert: {}".format(' '.join(map(str, result))))
+            print("Kompression: {}".format(c))
             return result, dictionary
         except Exception as e:
             print("FEHLER: {}".format(str(e)))
             return None, None
-
-    def show_encoding_steps(self, data, dictionary):
-        """
-        Zeigt detaillierte Kodierungsschritte (auf Anfrage)
-        """
-        print("\n=== KODIERUNGSSCHRITTE ===")
-
-        # Hilfsfunktion für Formatierung
-        def pad_left(text, width):
-            text = str(text)
-            if len(text) >= width:
-                return text
-            return text + ' ' * (width - len(text))
-
-        result = []
-        current_string = ""
-        step = 1
-
-        # Zeige Startwörterbuch
-        print("Start-Wörterbuch:")
-        for key, value in sorted(dictionary.items(), key=lambda x: x[1]):
-            print("  {}: '{}'".format(value, key))
-
-        print("\nSchritte:")
-
-        for char in data:
-            new_string = current_string + char
-
-            if new_string in dictionary:
-                current_string = new_string
-            else:
-                # Ausgabe für aktuellen Schritt
-                if current_string:
-                    index = dictionary[current_string]
-                    result.append(index)
-                    next_index = len(dictionary)
-
-                    print("{}. '{}' -> {} | Neu: {}='{}'".format(
-                        step, current_string, index, next_index, new_string
-                    ))
-
-                    dictionary[new_string] = next_index
-                    step += 1
-
-                current_string = char
-
-        # Letzter Schritt
-        if current_string:
-            index = dictionary[current_string]
-            result.append(index)
-            print("{}. '{}' -> {}".format(step, current_string, index))
-
-        print("\nErgebnis: {}".format(' '.join(map(str, result))))
-        return result
 
     def show_final_dictionary(self, dictionary):
         """
@@ -383,20 +368,18 @@ class LZW(Tool):
 
         if choice == "1":
             return None  # Automatische Erkennung
-        elif choice == "2":
+        if choice == "2":
             return [str(i) for i in range(10)]
-        elif choice == "3":
+        if choice == "3":
             return [chr(i) for i in range(ord('A'), ord('Z') + 1)]
-        elif choice == "4":
+        if choice == "4":
             return [chr(i) for i in range(ord('a'), ord('z') + 1)]
-        elif choice == "5":
+        if choice == "5":
             chars_input = input("Zeichen eingeben: ").strip()
             if chars_input:
                 return list(chars_input)
-            else:
-                return [str(i) for i in range(10)]
-        else:
-            return [str(i) for i in range(10)]  # Default
+            return [str(i) for i in range(10)]
+        return [str(i) for i in range(10)]  # Default
 
     def run(self) -> None:
         """
@@ -494,6 +477,7 @@ class InfoAnalyseTool(Tool):
         self.probs = []
         self.codes = []
         self.results = {}
+        self.custom_codes = []
 
     def clear_screen(self):
         """Simuliert clear screen für bessere Übersicht"""
@@ -593,6 +577,7 @@ class InfoAnalyseTool(Tool):
         print("=== ZUSAMMENFASSUNG ===")
         print("Symbole: {}".format(len(self.symbols)))
         print("H(X): {:.3f} bit".format(self.results['entropy']))
+        print("H0: {:.3f} bit".format(self.results['h0']))
         print("RQ: {:.3f} bit".format(self.results['redundanz_quelle']))
 
         # Huffman berechnen
@@ -604,14 +589,14 @@ class InfoAnalyseTool(Tool):
     def show_entropy_details(self):
         """Details zur Entropie"""
         print("=== ENTROPIE DETAILS ===")
-        print("H(X) = -sum(p*log2(p))")
+        print("x: p(x)*I(x)=h_x")
         print("")
         total = 0
         for s, p in zip(self.symbols, self.probs):
             term = -p * math.log(p, 2)
             total += term
             print("{}: {:.3f}*{:.3f}={:.3f}".format(s, p, math.log(p, 2), term))
-        print("Sum: {:.6f} bit".format(total))
+        print("Sum: {:.6f} bit = H(X) = -sum(p*log2(p))".format(total))
 
     def show_redundanz_details(self):
         """Details zur Redundanz"""
@@ -639,6 +624,28 @@ class InfoAnalyseTool(Tool):
             print("{}: {:.3f}*{}={:.3f}".format(s, p, code_len, term))
         print("L = {:.6f} bit".format(total))
 
+    def analyse_encoding(self):
+        """Codierung analysieren"""
+        if not self.symbols:
+            print("Keine Daten!")
+            return
+
+        if len(self.custom_codes) == 0 or input("Neuen Code eingeben? (j/N)") == "j":
+            for i, s in enumerate(self.symbols):
+                self.custom_codes.append(input("Code für Symbol {} ({}): ".format(i + 1, s)))
+
+        length = sum(p * len(c) for (c, p) in zip(self.custom_codes, self.probs))
+        entropy = -sum(p * math.log2(p) for p in self.probs if p > 0)
+        redundancy_c = length - entropy
+        redundancy_q = math.log(len(self.symbols), 2) - entropy
+
+        print("=== CODIERUNG ANALYSE ===")
+        print("")
+        print("L  = {}".format(round(length,3)))
+        print("H  = {}".format(round(entropy,3)))
+        print("RC = {}".format(round(redundancy_c,3)))
+        print("RQ = {}".format(round(redundancy_q,3)))
+
     def encode_message(self):
         """Nachricht codieren"""
         if not self.symbols:
@@ -656,7 +663,7 @@ class InfoAnalyseTool(Tool):
                 print("Zeichen '{}' unbekannt!".format(char))
                 return
 
-        print("Codiert: {}".format(encoded))
+        print("Codiert (Huffman): {}".format(encoded))
         print("Länge: {} bit".format(len(encoded)))
         orig_len = len(msg) * math.ceil(math.log(len(self.symbols), 2))
         print("Original: {} bit".format(orig_len))
@@ -676,8 +683,9 @@ class InfoAnalyseTool(Tool):
                 print("2) Entropie Details")
                 print("3) Redundanz Details")
                 print("4) Huffman Details")
-                print("5) Nachricht codieren")
-                print("6) Neue Daten")
+                print("5) Codierung analysieren")
+                print("6) Nachricht codieren")
+                print("7) Neue Daten")
             else:
                 print("Keine Daten vorhanden")
                 print("")
@@ -690,13 +698,12 @@ class InfoAnalyseTool(Tool):
 
             if choice == 'q':
                 break
-            elif choice == '1':
+            if choice == '1':
                 if self.symbols:
                     self.show_summary()
-                else:
-                    if self.input_data():
-                        self.calculate_all()
-                        self.show_summary()
+                elif self.input_data():
+                    self.calculate_all()
+                    self.show_summary()
             elif choice == '2' and self.symbols:
                 self.show_entropy_details()
             elif choice == '3' and self.symbols:
@@ -704,13 +711,15 @@ class InfoAnalyseTool(Tool):
             elif choice == '4' and self.symbols:
                 self.show_huffman_details()
             elif choice == '5' and self.symbols:
-                self.encode_message()
+                self.analyse_encoding()
             elif choice == '6' and self.symbols:
+                self.encode_message()
+            elif choice == '7' and self.symbols:
                 if self.input_data():
                     self.calculate_all()
             else:
                 print("Ungültige Eingabe!")
 
             if choice != 'q':
-                input("\nEnter zum Fortfahren...")
+                input("Enter zum Fortfahren...")
 
